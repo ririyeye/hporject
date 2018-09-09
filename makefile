@@ -8,9 +8,15 @@ cflags = $(base)
 cppflags = $(base) -std=c++14
 linkflags = $(base) 
 
-all:aimwrite hardconnectd
-	cp hardconnectd /rootfs
-	cp aimwrite /rootfs
+all:aimwrite hardconnectd test.cgi
+	#cp hardconnectd /rootfs
+	#cp aimwrite /rootfs
+	cp $^ /rootfs/www/cgi-bin
+
+
+test.cgi:test.cpp cgic.o
+	$(CXX) -o $@ $^ $(cppflags) 
+
 aimwrite:cgi_write.o cgic.o libctl.so 
 	$(CC) -o $@ $^ $(linkflags)
 
