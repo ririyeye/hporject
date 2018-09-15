@@ -3,7 +3,7 @@
 
 
 
-extern "C" int cgiMain(int)
+extern "C" int cgiMain()
 {
 	key_t key;
 	if (0 > (key = getKey(KEYPATH, KEYNUM)))

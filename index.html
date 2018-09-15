@@ -1,0 +1,28 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>tem</title>
+</head>
+<body>
+
+    <form action="./cgi-bin/cgi_reg.cgi" autocomplete="on">
+        账号:<input type="text" name="user"><br>
+        密码:<input type="text" name="pass"><br>
+        <input type="submit" value="注册">
+        <input type="submit" value="登入" formaction="./cgi-bin/cgi_log.cgi">
+    </form>
+
+    <form action="./cgi-bin/lighton.cgi" autocomplete="on">
+        stm32len:<input type="submit" value="全亮">
+        <input type="submit" value="全灭" formaction="./cgi-bin/lightoff.cgi">
+    </form>
+
+    <h2>Playing the Object</h2>
+
+    <embed src="http://192.168.7.88:8080/?action=stream" width="640" height="480">
+
+
+
+</body>
+</html>

@@ -32,3 +32,4 @@
 *.app
 aimwrite
 hardconnectd
+*.cgi

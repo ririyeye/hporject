@@ -16,7 +16,7 @@ extern "C"
 
 
 
-	}TMES;
+	}msgdata_t;
 	
 	typedef struct 
 	{
@@ -26,12 +26,17 @@ extern "C"
 
 #define KEYPATH "/root"
 #define KEYNUM 'A'
+#define DB_NAME "/test.db"
+#define LOGPATH "/log.txt"
 
+#define LED_ON 1
+#define LED_OFF 2
 
 	key_t getKey(char *path, int num);
 	int getMessQuene(key_t key);
 	void * getSHM(key_t key);
-
+	int register_to_sql(char * name, char * pass);
+	int login_to_sql(char * name, char * pass);
 #ifdef __cplusplus
 }
 #endif
