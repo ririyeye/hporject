@@ -19,11 +19,21 @@ extern "C" int cgiMain()
 		)
 	{
 		char infobuff[50];
-		sprintf(infobuff, "test log user = %s,pas = %s", userbuff, passbuff);
+		
 
-		html_dbg_printf(infobuff);
+		//
 	
-		//login_to_sql(userbuff, passbuff);
+		int ret = login_to_sql(userbuff, passbuff);
+
+		if (ret ==0)
+		{
+			html_dbg_printf("log ok");
+		}
+		else
+		{
+			sprintf(infobuff, "log error ,user = %s,pas = %s", userbuff, passbuff);
+			html_dbg_printf(infobuff);
+		}
 	}
 	else
 	{

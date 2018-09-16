@@ -14,7 +14,16 @@
 #include <unistd.h>
 #include <termios.h>
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include "mpu6050/head.h"
 
+#include <thread>
+
+using namespace std;
 
 int uart_device_open()
 {
@@ -45,6 +54,32 @@ int uart_device_open()
 }
 
 
+
+#define ACC (1/16384.0f * 10.0f)
+
+
+
+void init_mpu6050(const char * name, TSHM * ppp)
+{
+	int fd;
+
+	fd = open("/dev/mpu6050", O_RDWR);
+
+	union mpu6050 data;
+	while (1)
+	{
+		ioctl(fd, ACCEL_CMD, &data);
+		//printf("accel:x = %f,y = %f,z = %f\n", (int)data.accel.x * ACC, (int)data.accel.y* ACC, (int)data.accel.z* ACC);
+
+		ppp->x = data.accel.x * ACC;
+		ppp->y = data.accel.y * ACC;
+		ppp->z = data.accel.z * ACC;
+		usleep(1000 * 50);
+	}
+}
+
+
+
 void stm32led(int fd,int cmd)
 {
 	char c;
@@ -69,11 +104,17 @@ int cgiMain()
 {
 	key_t key = getKey(KEYPATH, KEYNUM);
 	int mid = getMessQuene(key);
+	TSHM * sid = (TSHM*)getSHM(key);
 
 	msgdata_t msg;
 
 	int uartfd = uart_device_open();
 	char uartc;
+
+	thread ppp(init_mpu6050, "/dev/mpu6050",sid);
+	ppp.detach();
+	
+
 
 	while (1)
 	{

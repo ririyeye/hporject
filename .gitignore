@@ -33,3 +33,7 @@
 aimwrite
 hardconnectd
 *.cgi
+*.cmd
+*.order
+*.symvers
+*.ko

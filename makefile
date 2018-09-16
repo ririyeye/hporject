@@ -6,9 +6,9 @@ base = -Wall -g -fPIC -I .
 
 cflags = $(base)
 cppflags = $(base) -std=c++14
-linkflags = $(base) -L  . libsqlite3.so.0.8.6
+linkflags = $(base) -lpthread -L  . libsqlite3.so.0.8.6
 
-cgi += lightoff.cgi lighton.cgi
+cgi += lightoff.cgi lighton.cgi mpu6050.cgi
 
 all:aimwrite hardconnectd test.cgi cgi_reg.cgi cgi_log.cgi $(cgi)
 	#cp hardconnectd /rootfs
@@ -16,7 +16,7 @@ all:aimwrite hardconnectd test.cgi cgi_reg.cgi cgi_log.cgi $(cgi)
 	cp *.cgi /rootfs/www/cgi-bin
 	cp *.html /rootfs/www
 	cp -d *.so /rootfs/lib
-
+	cp mpu6050/*.ko /rootfs
 
 
 
@@ -24,6 +24,9 @@ lightoff.cgi:lightoff.cpp libctl.so cgic.o
 	$(CXX) -o $@ $^ $(cppflags) $(linkflags)
 
 lighton.cgi:lighton.cpp libctl.so cgic.o
+	$(CXX) -o $@ $^ $(cppflags) $(linkflags)
+
+mpu6050.cgi:mpu6050.cpp libctl.so cgic.o
 	$(CXX) -o $@ $^ $(cppflags) $(linkflags)
 
 test.cgi:test.cpp libctl.so cgic.o

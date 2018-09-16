@@ -14,28 +14,28 @@ extern "C" int cgiMain()
 	auto passf = cgiFormString("pass", passbuff, 50);
 
 
-	if ((userf == cgiFormSuccess) 
+	if ((userf == cgiFormSuccess)
 		&& (passf == cgiFormSuccess)
 		)
 	{
-		//char infobuff[50];
-		//sprintf(infobuff, "test reg user = %s,pas = %s",userbuff,passbuff);
 
-		//html_dbg_printf(infobuff);
-	
-		int ret = register_to_sql(userbuff, passbuff);
-
-		if (ret !=0 )
+		int ret;
+		if (0 == (ret = login_to_sql(userbuff, passbuff)))
 		{
-			char buff[50];
-			sprintf(buff, "error code = %d", ret);
-			html_dbg_printf(buff);
+			html_dbg_printf("allready register");
+			return 0;
+		}
+
+		if (0 == (ret = register_to_sql(userbuff, passbuff)))
+		{
+			html_dbg_printf("register ok");
+			return 0;
 		}
 	}
-	else
-	{
-		html_dbg_printf("reg error");
-	}
+
+
+
+
 	return 0;
 }
 

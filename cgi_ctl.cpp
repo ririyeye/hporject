@@ -10,7 +10,8 @@
 
 #include <sqlite3.h>
 #include <fstream>
-
+#include <vector>
+#include <string.h>
 using namespace std;
 key_t getKey(char *path, int num)
 {
@@ -84,137 +85,125 @@ void cgilog(char * fileName, char * message)
 
 
 
-static int insertcallback(void *NotUsed, int argc, char **argv, char **azColName) {
-	char buff[50];
-	int i;
-	cgilog(LOGPATH, "insert cb\n");
-	for (i = 0; i < argc; i++) {
-		sprintf(buff, "%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		cgilog(LOGPATH, buff);
-	}
-	return 0;
-}
-
-
-static int insertsql(sqlite3 * db, char * table, char * name, char *pass)
-{
-	char * sqlreq = \
-		"INSERT INTO %s (USER,PASS)\
-         VALUES('%s','%s'); \
-		";
-	char buff[50];
-
-	sprintf(buff, sqlreq, table, name, pass);
-
-	char * errmsg;
-
-	int ret = sqlite3_exec(db, buff, insertcallback, 0, &errmsg);
-
-	if (ret != SQLITE_OK)
-	{
-		char buff[50];
-		sprintf(buff, "insert SQL error: %s ,%d\n", errmsg,ret);
-		cgilog(LOGPATH, buff);
-		sqlite3_free(errmsg);
-	}
-
-	return ret;
-}
-
-
-static int createcallback(void *NotUsed, int argc, char **argv, char **azColName) {
-	cgilog(LOGPATH, "create info\n");
-	char buff[50];
-	int i;
-	for (i = 0; i < argc; i++) {
-		sprintf(buff,"%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		cgilog(LOGPATH, buff);
-	}
-	return 0;
-}
-
-
-static int createsql(sqlite3 * db, char * table)
-{
-
-	char * sqlreq = "\
-		CREATE TABLE %s(\
-			USER  CHAR(50) PRIMARY KEY NOT NULL,\
-			PASS CHAR(50)  NOT NULL\
-		);";
-	
-	char buff[50];
-
-	sprintf(buff, sqlreq, table);
-	char * errmsg;
-	cgilog(LOGPATH, buff);
-	int ret = sqlite3_exec(db, buff, createcallback, 0, &errmsg);
-
-	if (ret != SQLITE_OK)
-	{
-		char buff[50];
-		sprintf(buff, "create SQL error: %s\n", errmsg);
-		cgilog(LOGPATH, buff);
-		sqlite3_free(errmsg);
-	}
-
-
-	return ret;
-}
-
-
-
 int register_to_sql(char * name, char * pass)
 {
 	sqlite3 *db;
-	int rc;
+	int ret;
+	char *errmsg;
+	ret = sqlite3_open(DB_NAME, &db);
 
-	rc = sqlite3_open(DB_NAME, &db);
-	char buff[50];
-	if (rc) {
-		sprintf(buff, "Can't open database: %s\n", sqlite3_errmsg(db));
-		cgilog(LOGPATH, buff);
+	char errbuff[100];
+
+	sprintf(errbuff, "%s,%s\n", name,pass);
+	cgilog(LOGPATH, errbuff);
+
+	//创建表单
+	char *sql = "create table uuu(name char[50] PRIMARY KEY NOT NULL,pass char [50])";
+	ret = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK)
+	{
+		sprintf(errbuff, "1fail to exec:%s\n", errmsg);
+		cgilog(LOGPATH, errbuff);
+		sqlite3_free(errmsg);
 	}
-	else {
-		//html_dbg_printf("reg iii");
-		rc = insertsql(db, "dat", "123", "456");
-		if (rc != SQLITE_OK)
-		{
 
-		}
+	//增数据      write
+	char buffwrite[200];
+	char *sql2 = "insert into uuu values('%s','%s')";
+	sprintf(buffwrite, sql2, name, pass);
 
-		char buff[50];
-		sprintf(buff, "insert error num = %d\n", rc);
-		cgilog(LOGPATH, buff);
-
-
-		if (SQLITE_OK != rc)
-		{
-			if (SQLITE_OK == createsql(db, "dat"))
-			{
-				html_dbg_printf("create & insert ok ");
-			}
-			else
-			{
-				html_dbg_printf("insert fail");
-			}
-		}
-		else
-		{
-			html_dbg_printf("insert ok");
-		}
+	ret = sqlite3_exec(db, buffwrite, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK)
+	{
+		sprintf(errbuff, "2fail to exec:%s\n", errmsg);
+		cgilog(LOGPATH, errbuff);
+		sqlite3_free(errmsg);
 	}
+
+	sprintf(errbuff, "sql ok\n");
+	cgilog(LOGPATH, errbuff);
+
 	sqlite3_close(db);
-	return rc;
+	return ret;
 }
+
+
+struct sqlread
+{
+	char name[50];
+	char pass[50];
+};
+
+vector <sqlread> sqlreadvector;
+
+
+int callback1(void *chuancan, int count, char **colval, char **colname)
+{
+	sqlread rdtmp;
+
+	strcpy(rdtmp.name, colval[0]);
+	strcpy(rdtmp.pass, colval[1]);
+
+	sqlreadvector.push_back(rdtmp);
+
+	return 0;
+}
+
+
 
 
 int login_to_sql(char * name, char * pass)
 {
+	sqlite3 *db;
+	int ret;
+	char *errmsg;
+	ret = sqlite3_open(DB_NAME, &db);
 
+	char errbuff[100];
+
+	sprintf(errbuff, "%s,%s\n", name, pass);
+	cgilog(LOGPATH, errbuff);
+
+	//查询数据    read
+	char * sql = "select * from uuu";
+	
+	ret = sqlite3_exec(db, sql, callback1, nullptr, &errmsg);
+	if (ret != SQLITE_OK)
+	{
+		fprintf(stderr, "fail to exec:%s\n", errmsg);
+		sqlite3_free(errmsg);
+		//exit(1);
+	}
+
+	for (int i =0;i< sqlreadvector.size();i++)
+	{
+		//sprintf(errbuff, "%d name=%s,pass=%s",i,sqlreadvector[i].name,sqlreadvector[i].pass);
+		//cgilog(LOGPATH, errbuff);
+		if ((!strcmp(sqlreadvector[i].name,name))
+			&& !strcmp(sqlreadvector[i].pass, pass))
+		{
+			goto logok;
+		}
+		
+	}
+	sqlite3_close(db);
 	return -1;
+logok:
+	return 0;
 }
 
+
+
+
+void sendPage(file *fp, char * file)
+{
+
+
+
+
+
+
+}
 
 
 

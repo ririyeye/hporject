@@ -20,13 +20,19 @@ extern "C"
 	
 	typedef struct 
 	{
-		char test[100];
+		int ledstatus;
+		int tmpstatus;
+		float tmpvalue;
+
+		float x, y, z;
+
 	}TSHM;
 
 
 #define KEYPATH "/root"
 #define KEYNUM 'A'
 #define DB_NAME "/test.db"
+//#define TAB_NAME "test1"
 #define LOGPATH "/log.txt"
 
 #define LED_ON 1
