@@ -37,9 +37,9 @@ struct device *devs;
 
 struct i2c_client *glo_client;
 
-void write_data(unsigned char reg,unsigned char val)
+void write_data(unsigned char reg, unsigned char val)
 {
-	unsigned char wbuf[] = {reg,val};
+	unsigned char wbuf[] = { reg,val };
 	struct i2c_msg msg[1] = { //数组元素个数由起始信号的个数决定
 		{
 			.addr = glo_client->addr,//代表从机地址
@@ -52,6 +52,12 @@ void write_data(unsigned char reg,unsigned char val)
 	{
 		printk("error write\n");
 	}
+#if 0
+	else
+	{
+		printk("write %#x , %#x\n", (int)wbuf[0], (int)wbuf[1]);
+	}
+#endif
 }
 
 unsigned char read_data(unsigned char reg)
@@ -76,7 +82,12 @@ unsigned char read_data(unsigned char reg)
 	{
 		printk("error read\n");
 	}
-
+#if 0
+	else
+	{
+		printk("read %#x , %#x\n", (int)wbuf, (int)rbuf[0]);
+	}
+#endif
 	return rbuf[0];
 }
 

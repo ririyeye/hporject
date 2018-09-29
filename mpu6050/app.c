@@ -12,7 +12,11 @@ int main(int argc, const char *argv[])
 	int fd;
 
 	fd = open("/dev/mpu6050",O_RDWR);
-	
+	if (fd < 0)
+	{
+		printf("open fail\n");
+		return -1;
+	}
 	union mpu6050 data;
 	while(1)
 	{
