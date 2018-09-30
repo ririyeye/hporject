@@ -246,7 +246,7 @@ int myprobe(struct spi_device * spidev)
 	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
 	struct ssd1331_pri_data * pssd = NULL;
 	int ret;
-
+	/*get control gpio*/
 	if (0 > (ret = gpio_request(pdata->reset_io, spidev->modalias)))
 		goto err0;
 
@@ -254,6 +254,7 @@ int myprobe(struct spi_device * spidev)
 	if (0 > (ret = gpio_request(pdata->dc_io, spidev->modalias)))
 		goto err1;
 	
+	/*get video memory*/
 	if (0 == (pssd = kmalloc(pdata->x_szie * pdata->y_size * sizeof(ssd1331_pri_data), GFP_KERNEL)))
 		goto err2;
 
@@ -262,9 +263,9 @@ int myprobe(struct spi_device * spidev)
 
 	if (0 == (pssd->pram = kmalloc(pdata->x_szie * pdata->y_size * sizeof(pix_data), GFP_KERNEL)))
 		goto err3;
-
+	
 	spi_set_drvdata(spidev, pssd);
-
+	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
 		goto err4;
 
@@ -284,6 +285,11 @@ err0:
 int myremove(struct spi_device * spidev)
 {
 	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
+
+	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
+	//free video memory
+	kfree(pssd->pram);
+	kfree(pssd);
 
 	gpio_free(pdata->dc_io);
 	gpio_free(pdata->reset_io);
