@@ -9,8 +9,28 @@
 #include <linux/spi/spi.h>
 #include <linux/fb.h>
 #include <linux/gpio.h>
-
 #include "ssd1331.h"
+
+typedef union pix_data {
+	struct {
+		u8 r:5;
+		u8 g:6;
+		u8 b:5;
+	};
+
+	struct {
+		u8 data[2];
+	};
+}pix_data;
+
+
+typedef struct ssd1331_pri_data
+{
+	pix_data * pram;
+	int x;
+	int y;
+}ssd1331_pri_data;
+
 
 static int write_command(struct spi_device * spidev,unsigned char cmd)
 {
@@ -224,32 +244,35 @@ static int ssd1331_init(struct spi_device * spidev)
 int myprobe(struct spi_device * spidev)
 {
 	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
-
+	struct ssd1331_pri_data * pssd = NULL;
 	int ret;
 
 	if (0 > (ret = gpio_request(pdata->reset_io, spidev->modalias)))
-	{
 		goto err0;
-	}
 
 
 	if (0 > (ret = gpio_request(pdata->dc_io, spidev->modalias)))
-	{
 		goto err1;
-	}
 	
-	if (0 == (spidev->dev.p = kmalloc(pdata->x_szie * pdata->y_size * 2, GFP_KERNEL)))
-	{
+	if (0 == (pssd = kmalloc(pdata->x_szie * pdata->y_size * sizeof(ssd1331_pri_data), GFP_KERNEL)))
 		goto err2;
-	}
-	if (0 != (ret = ssd1331_init(spidev)))
-	{
-		goto err3;
-	}
-	return 0;
 
+	pssd->x = pdata->x_szie;
+	pssd->y = pdata->y_size;
+
+	if (0 == (pssd->pram = kmalloc(pdata->x_szie * pdata->y_size * sizeof(pix_data), GFP_KERNEL)))
+		goto err3;
+
+	spi_set_drvdata(spidev, pssd);
+
+	if (0 != (ret = ssd1331_init(spidev)))
+		goto err4;
+
+	return 0;
+err4:
+	kfree(pssd->pram);
 err3:
-	kfree(spidev->dev.p);
+	kfree(pssd);
 err2:
 	gpio_free(pdata->dc_io);
 err1:
