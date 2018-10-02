@@ -10,6 +10,8 @@
 #include "ssd1331.h"
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/kthread.h>
+
 
 typedef union pix_data {
 	struct {
@@ -21,6 +23,7 @@ typedef union pix_data {
 	struct {
 		u8 data[2];
 	};
+	u16 color_num;
 }pix_data;
 
 
@@ -30,6 +33,12 @@ typedef struct ssd1331_pri_data
 	int dc_io;
 	int x_size;
 	int y_size;
+	int send_flag;
+//for debug
+	int color_num;
+
+	struct spi_device * spidev;
+	struct task_struct * ptask;
 	pix_data * pram;
 }ssd1331_pri_data;
 
@@ -37,10 +46,13 @@ typedef struct ssd1331_pri_data
 static int write_command(struct spi_device * spidev,unsigned char cmd)
 {
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
+	int ret;
 
 	gpio_direction_output(pssd->dc_io,0);
+	ret = spi_write(spidev, &cmd, 1);
+	gpio_direction_output(pssd->dc_io, 1);
 
-	return spi_write(spidev, &cmd, 1);
+	return ret;
 }
 
 #define Write_Command(x) write_command(spidev,(x))
@@ -284,6 +296,8 @@ static int platform_get_info(struct spi_device * spidev, struct ssd1331_pri_data
 
 static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 {
+	pssd->spidev = spidev;
+
 	if (0 == of_get_info(spidev, pssd))
 		return 1;
 
@@ -292,15 +306,68 @@ static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 	return -1;
 }
 
+static void ssd_change_color(struct ssd1331_pri_data * pssd)
+{
+	int i;
+	if (pssd->color_num)
+	{
+		pssd->color_num = 0;
+		printk("set black\n");
+	}
+	else
+	{
+		pssd->color_num = 0xffff;
+		printk("set white\n");
+	}
+
+	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
+	{
+		pssd->pram[i].color_num = pssd->color_num;
+	}
+}
+
+
+static void ssd_send_all(struct ssd1331_pri_data * pssd)
+{
+	struct spi_device * spidev = pssd->spidev;
+
+	Set_Column_Address(spidev , 0x00, 0x5F);
+	Set_Row_Address(spidev ,0x00, 0x3F);
+
+	gpio_direction_output(pssd->dc_io, 1);
+
+	spi_write(spidev, pssd->pram, pssd->x_size * pssd->y_size * 2);
+}
+
+
+static int mem_send_thread(void * pdata)
+{
+	struct ssd1331_pri_data * pssd = pdata;
+
+	printk("start send thread \n");
+
+	while (pssd->send_flag > 0)
+	{
+		ssleep(1);
+		ssd_change_color(pssd);
+		ssd_send_all(pssd);
+	}
+
+	printk("end send thread\n");
+	return 0;
+}
+
+
 static int myprobe(struct spi_device * spidev)
 {
 	struct ssd1331_pri_data * pssd = NULL;
 	int ret;
 
-	//private data
+	/*private data*/
 	if (0 == (pssd = devm_kzalloc(&spidev->dev, sizeof(ssd1331_pri_data), GFP_KERNEL)))
 		goto err;
-
+	
+	/*get infomation*/
 	if (0 > (ret = init_info(spidev, pssd)))
 		goto err;
 
@@ -311,20 +378,26 @@ static int myprobe(struct spi_device * spidev)
 		goto err;
 	}
 	/*get control gpio*/
-	if (0 > (ret = devm_gpio_request(&spidev->dev, pssd->reset_io, spidev->modalias)))
+	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->reset_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
 		printk("cat not get reset io\n");
 		goto err;
 	}
-	if (0 > (ret = devm_gpio_request(&spidev->dev, pssd->dc_io, spidev->modalias)))
+	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->dc_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
 		printk("cat not get dc io\n");
 		goto err;
 	}
-	spi_set_drvdata(spidev, pssd);
-	/*oled init sequence*/
+	spi_set_drvdata(spidev, pssd);	
 
+	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
+		goto err;
+
+	/*turn on flag*/
+	pssd->send_flag = 1;
+
+	if (0 == (pssd->ptask = kthread_run(mem_send_thread, pssd, "ssd1331 thread")))
 		goto err;
 
 	return 0;
@@ -334,6 +407,11 @@ err:
 
 int myremove(struct spi_device * spidev)
 {	
+	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
+
+
+	ssleep(3);
+
 	return 0;
 }
 
