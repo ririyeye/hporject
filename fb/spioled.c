@@ -1,15 +1,15 @@
 #include <linux/fs.h>
 #include <linux/module.h>
-//#include <linux/i2c.h>
 #include <linux/device.h>
 #include <asm/uaccess.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
-//#include <linux/sched.h>
 #include <linux/spi/spi.h>
 #include <linux/fb.h>
 #include <linux/gpio.h>
 #include "ssd1331.h"
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 typedef union pix_data {
 	struct {
@@ -26,17 +26,19 @@ typedef union pix_data {
 
 typedef struct ssd1331_pri_data
 {
+	int reset_io;
+	int dc_io;
+	int x_size;
+	int y_size;
 	pix_data * pram;
-	int x;
-	int y;
 }ssd1331_pri_data;
 
 
 static int write_command(struct spi_device * spidev,unsigned char cmd)
 {
-	struct ssd1331_platform_data * pdata = spidev->dev.platform_data;
+	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 
-	gpio_direction_output(pdata->dc_io,0);
+	gpio_direction_output(pssd->dc_io,0);
 
 	return spi_write(spidev, &cmd, 1);
 }
@@ -207,11 +209,11 @@ void Set_Command_Lock(struct spi_device * spidev, unsigned char d)
 
 static int ssd1331_init(struct spi_device * spidev)
 {
-	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
+	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 
-	gpio_direction_output(pdata->reset_io, 0);
+	gpio_direction_output(pssd->reset_io, 0);
 	msleep(100);
-	gpio_direction_output(pdata->reset_io, 1);
+	gpio_direction_output(pssd->reset_io, 1);
 
 	Set_Display_On_Off(spidev, 0x00);		    // Display Off (0x00/0x01)
 	Set_Remap_Format(spidev, 0x72);			// Set Horizontal Address Increment
@@ -239,61 +241,99 @@ static int ssd1331_init(struct spi_device * spidev)
 	return 0;
 }
 
+static int of_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
+{
+	u32 tmp[2];
 
+	struct device_node * of_node = spidev->dev.of_node;
 
-int myprobe(struct spi_device * spidev)
+	if (of_node == 0)
+		return -1;
+
+	of_property_read_u32_array(of_node, "video-size", tmp, 2);
+
+	pssd->x_size = tmp[0];
+	pssd->y_size = tmp[1];
+
+	pssd->reset_io = of_get_named_gpio(of_node, "reset-io", 0);
+	pssd->dc_io = of_get_named_gpio(of_node, "dc-io", 0);
+
+	if (!pssd->x_size || !pssd->y_size || !pssd->dc_io || !pssd->reset_io)
+	{
+		printk("of fail\n");
+		return -2;
+	}
+	return 0;
+}
+
+static int platform_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 {
 	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
-	struct ssd1331_pri_data * pssd = NULL;
-	int ret;
-	/*get control gpio*/
-	if (0 > (ret = gpio_request(pdata->reset_io, spidev->modalias)))
-		goto err0;
 
+	if (pdata == 0)
+		return -1;
 
-	if (0 > (ret = gpio_request(pdata->dc_io, spidev->modalias)))
-		goto err1;
-	
-	/*get video memory*/
-	if (0 == (pssd = kmalloc(pdata->x_szie * pdata->y_size * sizeof(ssd1331_pri_data), GFP_KERNEL)))
-		goto err2;
+	pssd->x_size = pdata->x_szie;
+	pssd->y_size = pdata->y_size;
 
-	pssd->x = pdata->x_szie;
-	pssd->y = pdata->y_size;
-
-	if (0 == (pssd->pram = kmalloc(pdata->x_szie * pdata->y_size * sizeof(pix_data), GFP_KERNEL)))
-		goto err3;
-	
-	spi_set_drvdata(spidev, pssd);
-	/*oled init sequence*/
-	if (0 != (ret = ssd1331_init(spidev)))
-		goto err4;
+	pssd->reset_io = pdata->reset_io;
+	pssd->dc_io = pdata->dc_io;
 
 	return 0;
-err4:
-	kfree(pssd->pram);
-err3:
-	kfree(pssd);
-err2:
-	gpio_free(pdata->dc_io);
-err1:
-	gpio_free(pdata->reset_io);
-err0:
-	return ret;
+}
+
+static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
+{
+	if (0 == of_get_info(spidev, pssd))
+		return 1;
+
+	if (0 == platform_get_info(spidev, pssd))
+		return 2;
+	return -1;
+}
+
+static int myprobe(struct spi_device * spidev)
+{
+	struct ssd1331_pri_data * pssd = NULL;
+	int ret;
+
+	//private data
+	if (0 == (pssd = devm_kzalloc(&spidev->dev, sizeof(ssd1331_pri_data), GFP_KERNEL)))
+		goto err;
+
+	if (0 > (ret = init_info(spidev, pssd)))
+		goto err;
+
+	/*get video memory*/
+	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->x_size * pssd->y_size * sizeof(pix_data), GFP_KERNEL)))
+	{
+		printk("video memory ,no enough mem\n");
+		goto err;
+	}
+	/*get control gpio*/
+	if (0 > (ret = devm_gpio_request(&spidev->dev, pssd->reset_io, spidev->modalias)))
+	{
+		printk("cat not get reset io\n");
+		goto err;
+	}
+	if (0 > (ret = devm_gpio_request(&spidev->dev, pssd->dc_io, spidev->modalias)))
+	{
+		printk("cat not get dc io\n");
+		goto err;
+	}
+	spi_set_drvdata(spidev, pssd);
+	/*oled init sequence*/
+
+	if (0 != (ret = ssd1331_init(spidev)))
+		goto err;
+
+	return 0;
+err:
+	return -1;
 }
 
 int myremove(struct spi_device * spidev)
-{
-	struct ssd1331_platform_data *pdata = spidev->dev.platform_data;
-
-	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
-	//free video memory
-	kfree(pssd->pram);
-	kfree(pssd);
-
-	gpio_free(pdata->dc_io);
-	gpio_free(pdata->reset_io);
-
+{	
 	return 0;
 }
 
@@ -303,12 +343,18 @@ struct spi_device_id ids[] =
 	{"ssd1331"},
 	{/*for null*/},
 };
-
+#ifdef CONFIG_OF
+static const struct of_device_id of_ssd_dt_ids[] = {
+	{.compatible = "my,ssd1331"},
+	{},
+};
+#endif
 struct spi_driver myspi_drv =
 {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "ssd1331",
+		.of_match_table = of_match_ptr(of_ssd_dt_ids),
 	},
 	.probe = myprobe,
 	.remove = myremove,
