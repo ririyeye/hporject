@@ -4,44 +4,7 @@ nginx-1.14.0.tar.gz  pcre-8.42.tar.gz  zlib-1.2.11.tar.gz
 
 2.fix src code
 
-ririyeye@ubuntu:/share/mynginx$ diff nginx-1.14.0_fix/ nginx-1.14.0 -r
-diff -r nginx-1.14.0_fix/auto/cc/name nginx-1.14.0/auto/cc/name
-10c10
-<     ngx_feature_run=no
----
->     ngx_feature_run=yes
-diff -r nginx-1.14.0_fix/auto/lib/pcre/make nginx-1.14.0/auto/lib/pcre/make
-56c56
-<       ./configure --disable-shared $PCRE_CONF_OPT --host=arm-linux-gnueabi
----
->       ./configure --disable-shared $PCRE_CONF_OPT
-diff -r nginx-1.14.0_fix/auto/types/sizeof nginx-1.14.0/auto/types/sizeof
-15c15
-< ngx_size=4
----
-> ngx_size=
-36c36
-< ngx_test="gcc $CC_TEST_FLAGS $CC_AUX_FLAGS \
----
-> ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
-43c43
-<     ngx_size=4
----
->     ngx_size=`$NGX_AUTOTEST`
-diff -r nginx-1.14.0_fix/src/os/unix/ngx_errno.h nginx-1.14.0/src/os/unix/ngx_errno.h
-15,17d14
-< #ifndef NGX_SYS_NERR
-< #define NGX_SYS_NERR 132
-< #endif
-19,24d15
-< #define NGX_HAVE_GCC_ATOMIC 1
-<
-<
-< #ifndef NGX_HAVE_SYSVSHM
-< #define NGX_HAVE_SYSVSHM 1
-< #endif
-
-
+ngx.patch
 
 
 3.modify prefix && lib dir
@@ -61,16 +24,17 @@ diff -r nginx-1.14.0_fix/src/os/unix/ngx_errno.h nginx-1.14.0/src/os/unix/ngx_er
 
 6.modify conf/nginx.conf
 
-/share/mynginx/nginstall/conf # diff nginx.conf nginx.conf_bk
---- nginx.conf
-+++ nginx.conf_bk
+/share/mynginx/nginstall/conf # diff nginx.conf_bk  nginx.conf
+--- nginx.conf_bk
++++ nginx.conf
 @@ -1,5 +1,5 @@
 
--user root ;
-+#user nobody;
+-#user nobody;
++user root ;
  worker_processes  1;
 
  #error_log  logs/error.log;
+
 
 
 7.run nginx
