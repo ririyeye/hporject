@@ -1,0 +1,90 @@
+diff -rNau nginx-1.14.0/auto/cc/name nginx-1.14.0_fix/auto/cc/name
+--- nginx-1.14.0/auto/cc/name	2018-04-17 23:22:36.000000000 +0800
++++ nginx-1.14.0_fix/auto/cc/name	2018-10-03 00:14:35.987688968 +0800
+@@ -7,7 +7,7 @@
+ 
+     ngx_feature="C compiler"
+     ngx_feature_name=
+-    ngx_feature_run=yes
++    ngx_feature_run=no
+     ngx_feature_incs=
+     ngx_feature_path=
+     ngx_feature_libs=
+diff -rNau nginx-1.14.0/auto/lib/pcre/make nginx-1.14.0_fix/auto/lib/pcre/make
+--- nginx-1.14.0/auto/lib/pcre/make	2018-04-17 23:22:36.000000000 +0800
++++ nginx-1.14.0_fix/auto/lib/pcre/make	2018-10-03 00:16:23.771151963 +0800
+@@ -53,7 +53,7 @@
+ 	cd $PCRE \\
+ 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
+ 	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
+-	./configure --disable-shared $PCRE_CONF_OPT
++	./configure --disable-shared $PCRE_CONF_OPT --host=arm-linux-gnueabi
+ 
+ $PCRE/.libs/libpcre.a:	$PCRE/Makefile
+ 	cd $PCRE \\
+diff -rNau nginx-1.14.0/auto/types/sizeof nginx-1.14.0_fix/auto/types/sizeof
+--- nginx-1.14.0/auto/types/sizeof	2018-04-17 23:22:36.000000000 +0800
++++ nginx-1.14.0_fix/auto/types/sizeof	2018-10-03 00:19:55.674125944 +0800
+@@ -12,7 +12,7 @@
+ 
+ END
+ 
+-ngx_size=
++ngx_size=4
+ 
+ cat << END > $NGX_AUTOTEST.c
+ 
+@@ -33,14 +33,14 @@
+ END
+ 
+ 
+-ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
++ngx_test="gcc $CC_TEST_FLAGS $CC_AUX_FLAGS \
+           -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+ 
+ eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+ 
+ 
+ if [ -x $NGX_AUTOTEST ]; then
+-    ngx_size=`$NGX_AUTOTEST`
++    ngx_size=4
+     echo " $ngx_size bytes"
+ fi
+ 
+diff -rNau nginx-1.14.0/src/os/unix/ngx_atomic.h nginx-1.14.0_fix/src/os/unix/ngx_atomic.h
+--- nginx-1.14.0/src/os/unix/ngx_atomic.h	2018-04-17 23:22:37.000000000 +0800
++++ nginx-1.14.0_fix/src/os/unix/ngx_atomic.h	2018-10-03 10:33:29.398816377 +0800
+@@ -87,13 +87,11 @@
+ 
+ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
+ 
+-
+ #elif (NGX_HAVE_GCC_ATOMIC)
+ 
+ /* GCC 4.1 builtin atomic operations */
+ 
+ #define NGX_HAVE_ATOMIC_OPS  1
+-
+ typedef long                        ngx_atomic_int_t;
+ typedef unsigned long               ngx_atomic_uint_t;
+ 
+diff -rNau nginx-1.14.0/src/os/unix/ngx_errno.h nginx-1.14.0_fix/src/os/unix/ngx_errno.h
+--- nginx-1.14.0/src/os/unix/ngx_errno.h	2018-04-17 23:22:37.000000000 +0800
++++ nginx-1.14.0_fix/src/os/unix/ngx_errno.h	2018-10-03 10:32:43.578022455 +0800
+@@ -12,7 +12,16 @@
+ #include <ngx_config.h>
+ #include <ngx_core.h>
+ 
++#ifndef NGX_SYS_NERR
++#define NGX_SYS_NERR 132
++#endif
+ 
++#define NGX_HAVE_GCC_ATOMIC 1
++
++
++#ifndef NGX_HAVE_SYSVSHM 
++#define NGX_HAVE_SYSVSHM 1
++#endif
+ typedef int               ngx_err_t;
+ 
+ #define NGX_EPERM         EPERM
