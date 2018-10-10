@@ -1,0 +1,50 @@
+ubuntu ss 客户端
+
+1. 安装 shadowsocks
+2.配置vi /etc/shadowsocks/config.json
+	添加账户密码 加密方式和本地转发端口
+3.启动代理 sslocal -c /etc/shadowsocks/config.json
+
+ubuntu ss客户端转http代理
+1.安装polipo
+	sudo apt-get install polipo
+
+2.修改配置文件
+	sudo gedit /etc/polipo/config
+
+
+# This file only needs to list configuration variables that deviate
+
+# from the default values. See /usr/share/doc/polipo/examples/config.sample
+
+# and "polipo -v" for variables you can tweak and further information.
+
+logSyslog = false
+
+logFile = "/var/log/polipo/polipo.log"
+
+
+socksParentProxy = "127.0.0.1:1080"
+
+socksProxyType = socks5
+
+
+chunkHighMark = 50331648
+
+objectHighMark = 16384
+
+
+serverMaxSlots = 64
+
+serverSlots = 16
+
+serverSlots1 = 32
+
+
+proxyAddress = "0.0.0.0"
+
+proxyPort = 8123
+
+3.重启代理
+	/etc/init.d/polipo restart
+
