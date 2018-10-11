@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<!-- saved from url=(0034)https://www.zfl9.com/ss-local.html -->
+<html class="theme-next pisces" lang="zh-Hans"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+  <link href="./ss-local gfwlist _ Otokaze&#39;s Blog_files/jquery.fancybox.css" rel="stylesheet" type="text/css">
+<link href="./ss-local gfwlist _ Otokaze&#39;s Blog_files/font-awesome.min.css" rel="stylesheet" type="text/css">
+<link href="./ss-local gfwlist _ Otokaze&#39;s Blog_files/main.css" rel="stylesheet" type="text/css">
+  <meta name="keywords" content="ss-local privoxy ss全局代理 gfwlist.action gfwlist2privoxy">
+  <link rel="shortcut icon" type="image/x-icon" href="https://www.zfl9.com/images/favicon.ico?v=5.1.1">
+<meta name="description" content="ss-local 是 shadowsocks 的本地 socks5 服务器，如果需要使用 ss-local 提供的 socks5 代理，必须让应用程序使用 socks5 协议与之通信。但是很可惜，除了部分浏览器、软件直接支持 socks5 协议外，其它的都只支持 http 代理。因此，我们需要借助 privoxy 来将 http 代理协议转换为 socks5 代理协议，与后端的 ss-local">
+<meta name="keywords" content="科学上网,ss-local">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ss-local 终端代理（gfwlist）">
+<meta property="og:url" content="https://www.zfl9.com/ss-local.html">
+<meta property="og:site_name" content="Otokaze&#39;s Blog">
+<meta property="og:description" content="ss-local 是 shadowsocks 的本地 socks5 服务器，如果需要使用 ss-local 提供的 socks5 代理，必须让应用程序使用 socks5 协议与之通信。但是很可惜，除了部分浏览器、软件直接支持 socks5 协议外，其它的都只支持 http 代理。因此，我们需要借助 privoxy 来将 http 代理协议转换为 socks5 代理协议，与后端的 ss-local">
+<meta property="og:updated_time" content="2018-09-13T04:18:51.290Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ss-local 终端代理（gfwlist）">
+<meta name="twitter:description" content="ss-local 是 shadowsocks 的本地 socks5 服务器，如果需要使用 ss-local 提供的 socks5 代理，必须让应用程序使用 socks5 协议与之通信。但是很可惜，除了部分浏览器、软件直接支持 socks5 协议外，其它的都只支持 http 代理。因此，我们需要借助 privoxy 来将 http 代理协议转换为 socks5 代理协议，与后端的 ss-local">
+<script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/push.js.下载"></script><script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/hm.js.下载"></script><script async="" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/analytics.js.下载"></script><script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":0,"b2t":false,"scrollpercent":false},
+    fancybox: true,
+    motion: false,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+  <link rel="canonical" href="https://www.zfl9.com/ss-local.html">
+<link href="./ss-local gfwlist _ Otokaze&#39;s Blog_files/prism.css" rel="stylesheet">
+  <title>ss-local 终端代理（gfwlist） | Otokaze's Blog</title>
+<script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/embed.js.下载" data-timestamp="1539246255111"></script><style type="text/css">.fancybox-margin{margin-right:17px;}</style><script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/count-data.js.下载"></script><link rel="preload" as="style" href="https://c.disquscdn.com/next/embed/styles/lounge.d797d52db05c56e7ec33542889f90bca.css"><link rel="preload" as="script" href="https://c.disquscdn.com/next/embed/common.bundle.18932c85febf9520158697cdc31f08ae.js"><link rel="preload" as="script" href="https://c.disquscdn.com/next/embed/lounge.bundle.ab905f052ba8af95ba7fd0785f080e6d.js"><link rel="preload" as="script" href="https://disqus.com/next/config.js"><script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/alfalfa.4a5fcca1fe50a757044dfd331b660625.js.下载" async="" charset="UTF-8"></script></head>
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-97872912-1', 'auto');
+  ga('send', 'pageview');
+</script>
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?3d58f51dbb2496a0e6d17b85065a5ae5";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    <div class="custom-logo-site-title">
+      <a href="https://www.zfl9.com/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Otokaze's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">条条大路通罗马，不如出生在罗马</h1>
+  </div>
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+<nav class="site-nav">
+    <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+          <a href="https://www.zfl9.com/" rel="section">
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            首页
+          </a>
+        </li>
+        <li class="menu-item menu-item-categories">
+          <a href="https://www.zfl9.com/categories" rel="section">
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            分类
+          </a>
+        </li>
+        <li class="menu-item menu-item-tags">
+          <a href="https://www.zfl9.com/tags" rel="section">
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            标签
+          </a>
+        </li>
+        <li class="menu-item menu-item-archives">
+          <a href="https://www.zfl9.com/archives" rel="section">
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            归档
+          </a>
+        </li>
+    </ul>
+</nav>
+ </div>
+    </header>
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+  <div id="posts" class="posts-expand">
+  <article class="post post-type-normal " itemscope="" itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="https://www.zfl9.com/ss-local.html">
+    <span hidden="" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Otokaze">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+    <span hidden="" itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Otokaze&#39;s Blog">
+    </span>
+      <header class="post-header">
+          <h2 class="post-title" itemprop="name headline">
+                ss-local 终端代理（gfwlist）
+          </h2>
+        <div class="post-meta">
+          <span class="post-time">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+                <span class="post-meta-item-text">发表于</span>
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2016-11-28T15:26:00+08:00">
+                2016-11-28
+              </time>
+          </span>
+            <span class="post-category">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+                <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="https://www.zfl9.com/categories/%E7%A7%91%E5%AD%A6%E4%B8%8A%E7%BD%91/" itemprop="url" rel="index">
+                    <span itemprop="name">科学上网</span>
+                  </a>
+                </span>
+            </span>
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="https://www.zfl9.com/ss-local.html#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count disqus-comment-count" data-disqus-identifier="ss-local.html" itemprop="commentCount">80 条评论</span>
+                </a>
+              </span>
+             <span id="/ss-local.html" class="leancloud_visitors" data-flag-title="ss-local 终端代理（gfwlist）">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+                 <span class="post-meta-item-text">阅读次数 </span>
+                 <span class="leancloud-visitors-count">17296</span>
+             </span>
+        </div>
+      </header>
+    <div class="post-body" itemprop="articleBody">
+        <blockquote>
+<p>ss-local 是 shadowsocks 的本地 socks5 服务器，如果需要使用 ss-local 提供的 socks5 代理，必须让应用程序使用 socks5 协议与之通信。但是很可惜，除了部分浏览器、软件直接支持 socks5 协议外，其它的都只支持 http 代理。因此，我们需要借助 privoxy 来将 http 代理协议转换为 socks5 代理协议，与后端的 ss-local 进行通信，与此同时我们还可以进行 gfwlist 分流操作。</p>
+</blockquote>
+<a id="more"></a>
+<h2 id="ss-local"><a href="https://www.zfl9.com/ss-local.html#ss-local" class="headerlink" title="ss-local"></a>ss-local</h2><h3 id="安装"><a href="https://www.zfl9.com/ss-local.html#%E5%AE%89%E8%A3%85" class="headerlink" title="安装"></a>安装</h3><p>为简单起见，这里选择安装 python 版 shadowsocks，当然你可以选择自己喜欢的任意版本（ss、ssr、ssh、v2ray，只要能提供 socks5 代理）。</p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># CentOS/RHEL</span>
+yum -y <span class="token function">install</span> epel-release
+yum -y <span class="token function">install</span> python-pip
+pip <span class="token function">install</span> shadowsocks
+
+<span class="token comment" spellcheck="true"># ArchLinux</span>
+pacman -S python-pip
+pip <span class="token function">install</span> shadowsocks
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h3 id="配置"><a href="https://www.zfl9.com/ss-local.html#%E9%85%8D%E7%BD%AE" class="headerlink" title="配置"></a>配置</h3><pre class="language-bash line-numbers code-toolbar"><code class=" language-bash">vim /etc/ss-local.json
+<span class="token punctuation">{</span>
+    <span class="token string">"server"</span><span class="token keyword">:</span> <span class="token string">"1.2.3.4"</span>,
+    <span class="token string">"server_port"</span><span class="token keyword">:</span> 8989,
+    <span class="token string">"method"</span><span class="token keyword">:</span> <span class="token string">"aes-128-cfb"</span>,
+    <span class="token string">"password"</span><span class="token keyword">:</span> <span class="token string">"123456"</span>,
+    <span class="token string">"local_address"</span><span class="token keyword">:</span> <span class="token string">"127.0.0.1"</span>,
+    <span class="token string">"local_port"</span><span class="token keyword">:</span> 1080,
+    <span class="token string">"fast_open"</span><span class="token keyword">:</span> true,
+    <span class="token string">"workers"</span><span class="token keyword">:</span> 1
+<span class="token punctuation">}</span>
+
+<span class="token comment" spellcheck="true">## 配置说明：</span>
+<span class="token punctuation">{</span>
+    <span class="token string">"server"</span><span class="token keyword">:</span> <span class="token string">"1.2.3.4"</span>,          <span class="token comment" spellcheck="true"># 服务器IP</span>
+    <span class="token string">"server_port"</span><span class="token keyword">:</span> 8989,          <span class="token comment" spellcheck="true"># 服务器Port</span>
+    <span class="token string">"method"</span><span class="token keyword">:</span> <span class="token string">"aes-128-cfb"</span>,      <span class="token comment" spellcheck="true"># 加密方式</span>
+    <span class="token string">"password"</span><span class="token keyword">:</span> <span class="token string">"123456"</span>,         <span class="token comment" spellcheck="true"># 端口密码</span>
+    <span class="token string">"local_address"</span><span class="token keyword">:</span> <span class="token string">"127.0.0.1"</span>, <span class="token comment" spellcheck="true"># 本地监听IP</span>
+    <span class="token string">"local_port"</span><span class="token keyword">:</span> 1080,           <span class="token comment" spellcheck="true"># 本地监听Port</span>
+    <span class="token string">"fast_open"</span><span class="token keyword">:</span> true,            <span class="token comment" spellcheck="true"># TCP Fast Open</span>
+    <span class="token string">"workers"</span><span class="token keyword">:</span> 1                  <span class="token comment" spellcheck="true"># worker进程数量</span>
+<span class="token punctuation">}</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h3 id="运行"><a href="https://www.zfl9.com/ss-local.html#%E8%BF%90%E8%A1%8C" class="headerlink" title="运行"></a>运行</h3><pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token function">nohup</span> sslocal -c /etc/ss-local.json <span class="token operator">&lt;</span>/dev/null <span class="token operator">&amp;</span><span class="token operator">&gt;&gt;</span>/var/log/ss-local.log <span class="token operator">&amp;</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h2 id="privoxy"><a href="https://www.zfl9.com/ss-local.html#privoxy" class="headerlink" title="privoxy"></a>privoxy</h2><h3 id="安装-1"><a href="https://www.zfl9.com/ss-local.html#%E5%AE%89%E8%A3%85-1" class="headerlink" title="安装"></a>安装</h3><pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true">## CentOS/RHEL</span>
+yum -y <span class="token function">install</span> privoxy
+
+<span class="token comment" spellcheck="true">## ArchLinux</span>
+pacman -S privoxy
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h3 id="全局"><a href="https://www.zfl9.com/ss-local.html#%E5%85%A8%E5%B1%80" class="headerlink" title="全局"></a>全局</h3><p>全局模式是最简单最粗暴的，即：所有流量都走 ss-local，不区分什么国内国外。<br>所以请确定是否需要这种模式，如果不需要，请跳过此段，直接到 - <a href="https://www.zfl9.com/ss-local.html#gfwlist">gfwlist 模式</a>。</p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># 添加 socks5 转发配置</span>
+<span class="token keyword">echo</span> <span class="token string">'forward-socks5 / 127.0.0.1:1080 .'</span> <span class="token operator">&gt;&gt;</span>/etc/privoxy/config
+
+<span class="token comment" spellcheck="true"># 启动 privoxy.service</span>
+systemctl start privoxy.service
+systemctl -l status privoxy.service
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h3 id="gfwlist"><a href="https://www.zfl9.com/ss-local.html#gfwlist" class="headerlink" title="gfwlist"></a>gfwlist</h3><p>gfwlist 是由 AutoProxy 官方维护，由众多网民收集整理的中国大陆防火长城的域名屏蔽列表；<br>因为这是 Firefox 浏览器直接使用的一种格式，要在 privoxy 上使用就需要进行相应的格式转换；<br>这里我提供一个 shell 转换脚本，除了正则语法无法自动处理外，其它的基本 OK，<a href="https://github.com/zfl9/gfwlist2privoxy" rel="external nofollow noopener noreferrer" target="_blank">gfwlist2privoxy</a>。</p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># 关于 gfwlist2privoxy 脚本</span>
+<span class="token comment" spellcheck="true"># 脚本依赖 base64、curl(支持 https)、perl5 v5.10.0+</span>
+<span class="token comment" spellcheck="true"># 你也可以从这个网址下载 gfwlist.action，6 小时更新一次</span>
+<span class="token comment" spellcheck="true"># <a class="token url-link" href="https://zfl9.github.io/gfwlist2privoxy/gfwlist.action">https://zfl9.github.io/gfwlist2privoxy/gfwlist.action</a></span>
+
+<span class="token comment" spellcheck="true"># 获取 gfwlist2privoxy 脚本</span>
+curl -4sSkL <a class="token url-link" href="https://raw.github.com/zfl9/gfwlist2privoxy/master/gfwlist2privoxy">https://raw.github.com/zfl9/gfwlist2privoxy/master/gfwlist2privoxy</a> -O
+
+<span class="token comment" spellcheck="true"># 生成 gfwlist.action 文件</span>
+<span class="token function">bash</span> gfwlist2privoxy <span class="token string">'127.0.0.1:1080'</span>
+
+<span class="token comment" spellcheck="true"># 检查 gfwlist.action 文件</span>
+<span class="token function">more</span> gfwlist.action <span class="token comment" spellcheck="true"># 一般有 5000+ 行</span>
+
+<span class="token comment" spellcheck="true"># 应用 gfwlist.action 文件</span>
+<span class="token function">mv</span> -f gfwlist.action /etc/privoxy
+<span class="token keyword">echo</span> <span class="token string">'actionsfile gfwlist.action'</span> <span class="token operator">&gt;&gt;</span>/etc/privoxy/config
+
+<span class="token comment" spellcheck="true"># 启动 privoxy.service 服务</span>
+systemctl start privoxy.service
+systemctl -l status privoxy.service
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h2 id="环境变量"><a href="https://www.zfl9.com/ss-local.html#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" class="headerlink" title="环境变量"></a>环境变量</h2><p>有两种方式可以实现全局代理，推荐使用 proxychains-ng，因为更彻底。</p>
+<ul>
+<li><code>http_proxy</code>和<code>https_proxy</code>环境变量：非强制性的环境变量，部分软件可能不遵守；</li>
+<li>proxychains-ng 的<code>LD_PRELOAD</code>环境变量：强制性的环境变量，用来实现动态库替换。</li>
+</ul>
+<p>http_proxy 方式：</p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># privoxy 默认监听端口为 8118</span>
+proxy<span class="token operator">=</span><span class="token string">"<a class="token url-link" href="http://127.0.0.1:8118/">http://127.0.0.1:8118</a>"</span>
+<span class="token function">export</span> http_proxy<span class="token operator">=</span><span class="token variable">$proxy</span>
+<span class="token function">export</span> https_proxy<span class="token operator">=</span><span class="token variable">$proxy</span>
+<span class="token function">export</span> no_proxy<span class="token operator">=</span><span class="token string">"localhost, 127.0.0.1, ::1"</span>
+
+<span class="token comment" spellcheck="true"># no_proxy 环境变量是指不经过 privoxy 代理的地址或域名</span>
+<span class="token comment" spellcheck="true"># 只能填写具体的 IP、域名后缀，多个条目之间使用 ',' 逗号隔开</span>
+<span class="token comment" spellcheck="true"># 比如: export no_proxy="localhost, 192.168.1.1, ip.cn, <a class="vglnk" href="http://chinaz.com/" rel="nofollow"><span>chinaz</span><span>.</span><span>com</span></a>"</span>
+<span class="token comment" spellcheck="true"># 访问 localhost、192.168.1.1、ip.cn、*.ip.cn、chinaz.com、*.chinaz.com 将不使用代理</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<p>proxychains 方式：</p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># 安装 proxychains-ng</span>
+<span class="token comment" spellcheck="true">## ArchLinux</span>
+pacman -S proxychains-ng
+
+<span class="token comment" spellcheck="true">## CentOS/RHEL</span>
+./configure --prefix<span class="token operator">=</span>/usr --sysconfdir<span class="token operator">=</span>/etc
+<span class="token function">make</span> <span class="token operator">&amp;&amp;</span> <span class="token function">make</span> <span class="token function">install</span> <span class="token operator">&amp;&amp;</span> <span class="token function">make</span> install-config
+<span class="token function">ln</span> -sf /usr/bin/proxychains4 /usr/bin/proxychains
+
+<span class="token comment" spellcheck="true"># 配置 proxychains-ng</span>
+vim /etc/proxychains.conf
+<span class="token comment" spellcheck="true"># 注释 socks4 127.0.0.1 9050</span>
+<span class="token comment" spellcheck="true"># 添加 http 127.0.0.1 8118</span>
+
+<span class="token comment" spellcheck="true"># 替换当前 shell 进程</span>
+<span class="token comment" spellcheck="true"># 将 bash 替换为你的 shell</span>
+<span class="token function">exec</span> proxychains -q <span class="token function">bash</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<h2 id="代理测试"><a href="https://www.zfl9.com/ss-local.html#%E4%BB%A3%E7%90%86%E6%B5%8B%E8%AF%95" class="headerlink" title="代理测试"></a>代理测试</h2><p><strong>简单测试</strong></p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># 访问网站，有网页源码输出说明 OK</span>
+curl -4sSkL <a class="token url-link" href="https://www.baidu.com/">https://www.baidu.com</a>
+curl -4sSkL <a class="token url-link" href="https://www.google.com/">https://www.google.com</a>
+curl -4sSkL <a class="token url-link" href="https://www.google.co.jp/">https://www.google.co.jp</a>
+curl -4sSkL <a class="token url-link" href="https://www.google.com.hk/">https://www.google.com.hk</a>
+curl -4sSkL <a class="token url-link" href="https://www.youtube.com/">https://www.youtube.com</a>
+curl -4sSkL <a class="token url-link" href="https://www.facebook.com/">https://www.facebook.com</a>
+curl -4sSkL <a class="token url-link" href="https://www.wikipedia.org/">https://www.wikipedia.org</a>
+
+<span class="token comment" spellcheck="true"># 获取当前 IP 地址，应该显示本机 IP</span>
+curl -4sSkL <a class="token url-link" href="http://ip.chinaz.com/getip.aspx">http://ip.chinaz.com/getip.aspx</a>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+<p><strong>详细调试</strong></p>
+<pre class="language-bash line-numbers code-toolbar"><code class=" language-bash"><span class="token comment" spellcheck="true"># 关闭 privoxy.service</span>
+systemctl stop privoxy.service
+
+<span class="token comment" spellcheck="true"># 运行 privoxy (debug)</span>
+privoxy <span class="token operator">&lt;</span><span class="token punctuation">(</span>cat /etc/privoxy/config<span class="token punctuation">;</span> <span class="token keyword">echo</span> -e <span class="token string">'debug 1\ndebug 2\ndebug 1024\ndebug 4096\ndebug 8192'</span><span class="token punctuation">)</span>
+
+<span class="token comment" spellcheck="true"># 查看 privoxy 的日志</span>
+<span class="token function">tail</span> -f /var/log/privoxy/logfile
+
+<span class="token comment" spellcheck="true"># 访问百度，观察日志</span>
+curl -4sSkL <a class="token url-link" href="https://www.baidu.com/">https://www.baidu.com</a>
+<span class="token comment" spellcheck="true">##### 日志输出 [走直连] #####</span>
+2018-07-14 12:15:07.955 7f0f23f080c0 Connect: Waiting <span class="token keyword">for</span> the next client connection. Currently active threads: 1
+2018-07-14 12:15:07.956 7f0f2308d700 Connect: Accepted connection from 127.0.0.1 on socket 5
+2018-07-14 12:15:07.956 7f0f2308d700 Request: <a class="vglnk" href="http://www.baidu.com:443/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span><span>:</span><span>443</span><span>/</span></a>
+2018-07-14 12:15:07.956 7f0f2308d700 Connect: to <a class="vglnk" href="http://www.baidu.com:443/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span><span>:</span><span>443</span></a>
+2018-07-14 12:15:08.012 7f0f2308d700 Connect: Connected to <a class="vglnk" href="http://www.baidu.com/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span></a><span class="token punctuation">[</span>14.215.177.39<span class="token punctuation">]</span>:443.
+2018-07-14 12:15:08.012 7f0f2308d700 Connect: Created new connection to <a class="vglnk" href="http://www.baidu.com:443/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span><span>:</span><span>443</span></a> on socket 6.
+2018-07-14 12:15:08.012 7f0f2308d700 Connect: to <a class="vglnk" href="http://www.baidu.com:443/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span><span>:</span><span>443</span></a> successful
+2018-07-14 12:15:08.130 7f0f2308d700 Connect: Closing server socket 6 connected to <a class="vglnk" href="http://www.baidu.com/" rel="nofollow"><span>www</span><span>.</span><span>baidu</span><span>.</span><span>com</span></a>. Keep-alive 0. Tainted: 1. Socket alive 1. Timeout: 0.
+2018-07-14 12:15:08.130 7f0f2308d700 Connect: Closing client socket 5. Keep-alive: 0. Socket alive: 0. Data available: 0. Configuration <span class="token function">file</span> change detected: 0. Requests received: 1.
+<span class="token comment" spellcheck="true">##### 日志输出 [走直连] #####</span>
+
+<span class="token comment" spellcheck="true"># 访问谷歌，观察日志</span>
+curl -4sSkL <a class="token url-link" href="https://www.google.com/">https://www.google.com</a>
+<span class="token comment" spellcheck="true">##### 日志输出 [走代理] #####</span>
+2018-07-14 12:15:43.969 7f0f23f080c0 Connect: Waiting <span class="token keyword">for</span> the next client connection. Currently active threads: 1
+2018-07-14 12:15:43.969 7f0f2308d700 Connect: Accepted connection from 127.0.0.1 on socket 5
+2018-07-14 12:15:43.970 7f0f2308d700 Connect: Overriding forwarding settings based on <span class="token string">'forward-socks5 127.0.0.1:1080 .'</span>
+2018-07-14 12:15:43.970 7f0f2308d700 Request: <a class="vglnk" href="http://www.google.com:443/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>:</span><span>443</span><span>/</span></a>
+2018-07-14 12:15:43.970 7f0f2308d700 Connect: to <a class="vglnk" href="http://www.google.com:443/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>:</span><span>443</span></a>
+2018-07-14 12:15:43.970 7f0f2308d700 Connect: Connected to 127.0.0.1<span class="token punctuation">[</span>127.0.0.1<span class="token punctuation">]</span>:1080.
+2018-07-14 12:15:43.972 7f0f2308d700 Connect: Created new connection to <a class="vglnk" href="http://www.google.com:443/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>:</span><span>443</span></a> on socket 6.
+2018-07-14 12:15:43.972 7f0f2308d700 Connect: to <a class="vglnk" href="http://www.google.com:443/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>:</span><span>443</span></a> successful
+2018-07-14 12:15:44.640 7f0f23f080c0 Connect: Waiting <span class="token keyword">for</span> the next client connection. Currently active threads: 2
+2018-07-14 12:15:44.641 7f0f17de8700 Connect: Accepted connection from 127.0.0.1 on socket 7
+2018-07-14 12:15:44.641 7f0f17de8700 Connect: Complete client request received.
+2018-07-14 12:15:44.642 7f0f17de8700 Connect: Overriding forwarding settings based on <span class="token string">'forward-socks5 127.0.0.1:1080 .'</span>
+2018-07-14 12:15:44.642 7f0f17de8700 Request: <a class="vglnk" href="http://www.google.com.hk/url?sa" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span><span>/</span><span>url</span><span>?</span><span>sa</span></a><span class="token operator">=</span>p<span class="token operator">&amp;</span>hl<span class="token operator">=</span>zh-CN<span class="token operator">&amp;</span>pref<span class="token operator">=</span>hkredirect<span class="token operator">&amp;</span>pval<span class="token operator">=</span>yes<span class="token operator">&amp;</span>q<span class="token operator">=</span><a class="token url-link" href="http://www.google.com.hk/%3Fgws_rd%3Dcr">http://www.google.com.hk/?gws_rd=cr</a><span class="token operator">&amp;</span>ust<span class="token operator">=</span>1531541774610113<span class="token operator">&amp;</span>usg<span class="token operator">=</span>AOvVaw1WKKuVWlVYxE2fELvMJW-Q
+2018-07-14 12:15:44.642 7f0f17de8700 Connect: to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a>
+2018-07-14 12:15:44.642 7f0f17de8700 Connect: Connected to 127.0.0.1<span class="token punctuation">[</span>127.0.0.1<span class="token punctuation">]</span>:1080.
+2018-07-14 12:15:44.643 7f0f17de8700 Connect: Created new connection to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span><span>:</span><span>80</span></a> on socket 8.
+2018-07-14 12:15:44.643 7f0f17de8700 Connect: to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a> successful
+2018-07-14 12:15:45.013 7f0f17de8700 Connect: Done reading from server. Content length: 232 as expected. Bytes <span class="token function">most</span> recently read: 232.
+2018-07-14 12:15:45.013 7f0f17de8700 Connect: Closing server socket 8 connected to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a>. Keep-alive 1. Tainted: 0. Socket alive 1. Timeout: 0.
+2018-07-14 12:15:45.013 7f0f17de8700 Connect: Waiting <span class="token keyword">for</span> the next client request on socket 7. No server socket to keep open.
+2018-07-14 12:15:45.013 7f0f17de8700 Connect: Client request 2 arrived <span class="token keyword">in</span> <span class="token function">time</span> on socket 7.
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: Complete client request received.
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: Overriding forwarding settings based on <span class="token string">'forward-socks5 127.0.0.1:1080 .'</span>
+2018-07-14 12:15:45.014 7f0f17de8700 Request: <a class="vglnk" href="http://www.google.com.hk/?gws_rd" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span><span>/?</span><span>gws</span><span>_</span><span>rd</span></a><span class="token operator">=</span>cr
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a>
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: Connected to 127.0.0.1<span class="token punctuation">[</span>127.0.0.1<span class="token punctuation">]</span>:1080.
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: Created new connection to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span><span>:</span><span>80</span></a> on socket 8.
+2018-07-14 12:15:45.014 7f0f17de8700 Connect: to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a> successful
+2018-07-14 12:15:45.427 7f0f17de8700 Connect: Looks like we reached the end of the last chunk. We better stop reading.
+2018-07-14 12:15:45.427 7f0f17de8700 Connect: Done reading from server. Content length: 11519 as expected. Bytes <span class="token function">most</span> recently read: 3662.
+2018-07-14 12:15:45.427 7f0f17de8700 Connect: Closing server socket 8 connected to <a class="vglnk" href="http://www.google.com.hk/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span><span>.</span><span>hk</span></a>. Keep-alive 1. Tainted: 0. Socket alive 1. Timeout: 0.
+2018-07-14 12:15:45.429 7f0f17de8700 Connect: Waiting <span class="token keyword">for</span> the next client request on socket 7. No server socket to keep open.
+2018-07-14 12:15:45.429 7f0f2308d700 Connect: Closing server socket 6 connected to <a class="vglnk" href="http://www.google.com/" rel="nofollow"><span>www</span><span>.</span><span>google</span><span>.</span><span>com</span></a>. Keep-alive 0. Tainted: 1. Socket alive 1. Timeout: 0.
+2018-07-14 12:15:45.429 7f0f17de8700 Connect: Closing client socket 7. Keep-alive: 1. Socket alive: 0. Data available: 0. Configuration <span class="token function">file</span> change detected: 0. Requests received: 2.
+2018-07-14 12:15:45.429 7f0f2308d700 Connect: Closing client socket 5. Keep-alive: 0. Socket alive: 0. Data available: 0. Configuration <span class="token function">file</span> change detected: 0. Requests received: 1.
+<span class="token comment" spellcheck="true">##### 日志输出 [走代理] #####</span>
+
+<span class="token comment" spellcheck="true"># 调试完成，恢复 privoxy</span>
+<span class="token function">pkill</span> privoxy
+systemctl start privoxy.service
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code><div class="toolbar"><div class="toolbar-item"><span>Bash</span></div><div class="toolbar-item"><a>Copy</a></div></div></pre>
+    </div>
+    <div>
+    </div>
+    <div>
+    </div>
+    <div>
+    </div>
+    <footer class="post-footer">
+        <div class="post-tags">
+            <a href="https://www.zfl9.com/tags/%E7%A7%91%E5%AD%A6%E4%B8%8A%E7%BD%91/" rel="tag"># 科学上网</a>
+            <a href="https://www.zfl9.com/tags/ss-local/" rel="tag"># ss-local</a>
+        </div>
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+              <a href="https://www.zfl9.com/ssh-keys.html" rel="next" title="ssh密钥登录">
+                <i class="fa fa-chevron-left"></i> ssh密钥登录
+              </a>
+          </div>
+          <span class="post-nav-divider"></span>
+          <div class="post-nav-prev post-nav-item">
+              <a href="https://www.zfl9.com/rsync.html" rel="prev" title="rsync 数据同步备份">
+                rsync 数据同步备份 <i class="fa fa-chevron-right"></i>
+              </a>
+          </div>
+        </div>
+    </footer>
+  </article>
+    <div class="post-spread">
+    </div>
+  </div>
+          </div>
+  <div class="comments" id="comments">
+      <div id="disqus_thread"><iframe id="dsq-app1167" name="dsq-app1167" allowtransparency="true" frameborder="0" scrolling="no" tabindex="0" title="Disqus" width="100%" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/saved_resource.html" style="width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; height: 7213px !important;" horizontalscrolling="no" verticalscrolling="no"></iframe></div>
+  </div>
+        </div>
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+  <aside id="sidebar" class="sidebar" style="margin-top: 298px; display: block;">
+    <div class="sidebar-inner affix-top">
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/avatar.jpg" alt="Otokaze">
+          <p class="site-author-name" itemprop="name">Otokaze</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+        </div>
+        <nav class="site-state motion-element">
+            <div class="site-state-item site-state-posts">
+              <a href="https://www.zfl9.com/archives">
+                <span class="site-state-item-count">176</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+            <div class="site-state-item site-state-categories">
+              <a href="https://www.zfl9.com/categories/index.html">
+                <span class="site-state-item-count">65</span>
+                <span class="site-state-item-name">分类</span>
+              </a>
+            </div>
+            <div class="site-state-item site-state-tags">
+              <a href="https://www.zfl9.com/tags/index.html">
+                <span class="site-state-item-count">107</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+        </nav>
+        <div class="links-of-author motion-element">
+              <span class="links-of-author-item">
+                <a href="https://github.com/zfl9" target="_blank" title="GitHub rel=" external="" nofollow""="" rel="external nofollow noopener noreferrer">
+                    <i class="fa fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </span>
+              <span class="links-of-author-item">
+                <a href="mailto:zfl9.com@gmail.com" target="_blank" title="Email rel=" external="" nofollow""="" rel="external nofollow noopener noreferrer">
+                    <i class="fa fa-fw fa-envelope"></i>
+                  Email
+                </a>
+              </span>
+              <span class="links-of-author-item">
+                <a href="https://coding.net/u/zfl9" target="_blank" title="Coding rel=" external="" nofollow""="" rel="external nofollow noopener noreferrer">
+                    <i class="fa fa-fw fa-github-alt"></i>
+                  Coding
+                </a>
+              </span>
+              <span class="links-of-author-item">
+                <a href="https://t.me/Otokaze" target="_blank" title="Telegram rel=" external="" nofollow""="" rel="external nofollow noopener noreferrer">
+                    <i class="fa fa-fw fa-telegram"></i>
+                  Telegram
+                </a>
+              </span>
+        </div>
+      </section>
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc" style="max-height: 574px; width: calc(100% + 17px);">
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#ss-local"><span class="nav-number">1.</span> <span class="nav-text">ss-local</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E5%AE%89%E8%A3%85"><span class="nav-number">1.1.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E9%85%8D%E7%BD%AE"><span class="nav-number">1.2.</span> <span class="nav-text">配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E8%BF%90%E8%A1%8C"><span class="nav-number">1.3.</span> <span class="nav-text">运行</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#privoxy"><span class="nav-number">2.</span> <span class="nav-text">privoxy</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E5%AE%89%E8%A3%85-1"><span class="nav-number">2.1.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E5%85%A8%E5%B1%80"><span class="nav-number">2.2.</span> <span class="nav-text">全局</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#gfwlist"><span class="nav-number">2.3.</span> <span class="nav-text">gfwlist</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"><span class="nav-number">3.</span> <span class="nav-text">环境变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="https://www.zfl9.com/ss-local.html#%E4%BB%A3%E7%90%86%E6%B5%8B%E8%AF%95"><span class="nav-number">4.</span> <span class="nav-text">代理测试</span></a></li></ol></div>
+          </div>
+        </section>
+      <!--/noindex-->
+    </div>
+  </aside>
+      </div>
+    </main>
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">
+  ©  2016 - 
+  <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Otokaze</span>
+</div>
+<script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/clipboard.min.js.下载"></script>
+<script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/prism.js.下载" async=""></script>
+      </div>
+    </footer>
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+      </div>
+  </div>
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/index.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/fastclick.min.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/jquery.lazyload.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/velocity.min.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/velocity.ui.min.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/jquery.fancybox.pack.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/utils.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/motion.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/affix.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/pisces.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/scrollspy.js.下载"></script>
+<script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/post-details.js.下载"></script>
+  <script type="text/javascript" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/bootstrap.js.下载"></script>
+      <script id="dsq-count-scr" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/count.js.下载" async=""></script>
+      <script type="text/javascript">
+        var disqus_config = function () {
+          this.page.url = 'https://www.zfl9.com/ss-local.html';
+          this.page.identifier = 'ss-local.html';
+          this.page.title = 'ss-local 终端代理（gfwlist）';
+        };
+        var d = document, s = d.createElement('script');
+        s.src = 'https://otokaze.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', '' + +new Date());
+        (d.head || d.body).appendChild(s);
+      </script>
+  <script src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/av-core-mini-0.6.1.js.下载"></script>
+  <script>AV.initialize("3hhdw6gOg9wavsharVwVjqI3-gzGzoHsz", "O5WfDffqFsgmAVPwNY9of3QU");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';        
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<iframe style="display: none;" src="./ss-local gfwlist _ Otokaze&#39;s Blog_files/saved_resource(1).html"></iframe></body></html>
