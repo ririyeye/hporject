@@ -35,7 +35,9 @@ typedef struct ssd1331_pri_data
 	int y_size;
 	int send_flag;
 //for debug
-	int color_num;
+	int dbg_pri_flag;
+	u16 color_num;
+
 
 	struct spi_device * spidev;
 	struct task_struct * ptask;
@@ -48,10 +50,11 @@ static int write_command(struct spi_device * spidev,unsigned char cmd)
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 	int ret;
 
-	gpio_direction_output(pssd->dc_io,0);
+	gpio_set_value(pssd->dc_io,0);
+	if(pssd->dbg_pri_flag) printk("dc = 0\n");
 	ret = spi_write(spidev, &cmd, 1);
-	gpio_direction_output(pssd->dc_io, 1);
-
+	gpio_set_value(pssd->dc_io, 1);
+	if (pssd->dbg_pri_flag) printk("dc = 1\n");
 	return ret;
 }
 
@@ -223,9 +226,12 @@ static int ssd1331_init(struct spi_device * spidev)
 {
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 
-	gpio_direction_output(pssd->reset_io, 0);
+	gpio_set_value(pssd->reset_io, 0);
+	if (pssd->dbg_pri_flag) printk("reset = 0\n");
 	msleep(100);
-	gpio_direction_output(pssd->reset_io, 1);
+	gpio_set_value(pssd->reset_io, 1);
+	if (pssd->dbg_pri_flag) printk("reset = 1\n");
+
 
 	Set_Display_On_Off(spidev, 0x00);		    // Display Off (0x00/0x01)
 	Set_Remap_Format(spidev, 0x72);			// Set Horizontal Address Increment
@@ -270,6 +276,12 @@ static int of_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pss
 	pssd->reset_io = of_get_named_gpio(of_node, "reset-io", 0);
 	pssd->dc_io = of_get_named_gpio(of_node, "dc-io", 0);
 
+	gpio_direction_output(pssd->reset_io, 0);
+	gpio_direction_output(pssd->dc_io, 0);
+
+	printk("reset %d,dc %d\n", pssd->reset_io, pssd->dc_io);
+
+
 	if (!pssd->x_size || !pssd->y_size || !pssd->dc_io || !pssd->reset_io)
 	{
 		printk("of fail\n");
@@ -312,12 +324,12 @@ static void ssd_change_color(struct ssd1331_pri_data * pssd)
 	if (pssd->color_num)
 	{
 		pssd->color_num = 0;
-		printk("set black\n");
+		if (pssd->dbg_pri_flag) printk("set black\n");
 	}
 	else
 	{
 		pssd->color_num = 0xffff;
-		printk("set white\n");
+		if (pssd->dbg_pri_flag) printk("set white\n");
 	}
 
 	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
@@ -334,7 +346,8 @@ static void ssd_send_all(struct ssd1331_pri_data * pssd)
 	Set_Column_Address(spidev , 0x00, 0x5F);
 	Set_Row_Address(spidev ,0x00, 0x3F);
 
-	gpio_direction_output(pssd->dc_io, 1);
+	gpio_set_value(pssd->dc_io, 1);
+	if(pssd->dbg_pri_flag) printk("dc = 1\n");
 
 	spi_write(spidev, pssd->pram, pssd->x_size * pssd->y_size * 2);
 }
@@ -366,7 +379,9 @@ static int myprobe(struct spi_device * spidev)
 	/*private data*/
 	if (0 == (pssd = devm_kzalloc(&spidev->dev, sizeof(ssd1331_pri_data), GFP_KERNEL)))
 		goto err;
-	
+	pssd->dbg_pri_flag = 0;
+
+
 	/*get infomation*/
 	if (0 > (ret = init_info(spidev, pssd)))
 		goto err;

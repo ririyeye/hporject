@@ -5,7 +5,7 @@ ifeq ($(KERNELRELEASE),)
 PWD = $(shell pwd)
 
 ifeq ($(POS),a7)
-KERNEL_DIR = /share/linux
+KERNEL_DIR = /share/linux_sunxi
 endif
 
 ifeq ($(POS),970)
