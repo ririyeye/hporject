@@ -12,19 +12,14 @@
 #include <linux/of_gpio.h>
 #include <linux/kthread.h>
 
+#define  RGB_16(R,G,B) ((u16)(((B)&0xf8)>>3)|(((G)&0xfc)<<3)|(((R)&0xf8)<<8))
 
 typedef union pix_data {
-	struct {
-		u8 r:5;
-		u8 g:6;
-		u8 b:5;
-	};
-
-	struct {
-		u8 data[2];
-	};
 	u16 color_num;
 }pix_data;
+
+#define THREAD_CLOSE_FLAG -1
+
 
 
 typedef struct ssd1331_pri_data
@@ -321,16 +316,8 @@ static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 static void ssd_change_color(struct ssd1331_pri_data * pssd)
 {
 	int i;
-	if (pssd->color_num)
-	{
-		pssd->color_num = 0;
-		if (pssd->dbg_pri_flag) printk("set black\n");
-	}
-	else
-	{
-		pssd->color_num = 0xffff;
-		if (pssd->dbg_pri_flag) printk("set white\n");
-	}
+
+	pssd->color_num += 100;
 
 	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
 	{
@@ -356,16 +343,26 @@ static void ssd_send_all(struct ssd1331_pri_data * pssd)
 static int mem_send_thread(void * pdata)
 {
 	struct ssd1331_pri_data * pssd = pdata;
-
+	int i;
 	printk("start send thread \n");
 
 	while (pssd->send_flag > 0)
 	{
-		ssleep(1);
+		msleep(100);
 		ssd_change_color(pssd);
 		ssd_send_all(pssd);
 	}
 
+	/*clean all data*/
+	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
+	{
+		pssd->pram[i].color_num = 0;
+	}
+	ssd_send_all(pssd);
+
+	/*set close flag*/
+	pssd->send_flag = THREAD_CLOSE_FLAG;
+	
 	printk("end send thread\n");
 	return 0;
 }
@@ -387,6 +384,8 @@ static int myprobe(struct spi_device * spidev)
 		goto err;
 
 	/*get video memory*/
+	printk("size of pix_data is %d\n", sizeof(pix_data));
+
 	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->x_size * pssd->y_size * sizeof(pix_data), GFP_KERNEL)))
 	{
 		printk("video memory ,no enough mem\n");
@@ -420,12 +419,27 @@ err:
 	return -1;
 }
 
+static int close_send(ssd1331_pri_data * pssd)
+{
+	int trytime = 50;
+	pssd->send_flag = 0;
+	while (trytime-- > 0)
+	{
+		msleep(100);
+		if (pssd->send_flag == THREAD_CLOSE_FLAG)
+		{
+			return 0;
+		}
+	}
+	return -1;
+}
+
+
 int myremove(struct spi_device * spidev)
 {	
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
-
-
-	ssleep(3);
+	//try to close send thread
+	if (0 != close_send(pssd)) printk("send close fail\n");
 
 	return 0;
 }
