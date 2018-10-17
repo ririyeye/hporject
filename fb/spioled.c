@@ -22,7 +22,7 @@ typedef union pix_data {
 #define SSD_1331_HEIGTH 64
 
 
-typedef struct ssd1331_pri_data
+struct ssd1331_pri_data
 {
 	int reset_io;
 	int dc_io;
@@ -33,11 +33,22 @@ typedef struct ssd1331_pri_data
 	int dbg_pri_flag;
 	u16 color_num;
 
-
+	struct fb_info * pfb;
 	struct spi_device * spidev;
 	struct task_struct * ptask;
 	pix_data * pram;
 }ssd1331_pri_data;
+
+static const struct fb_var_screeninfo ssd1331fb_var = {
+	.bits_per_pixel = 16,
+};
+
+static struct fb_ops ssd1331fb_ops = {
+	.owner = THIS_MODULE,
+	.fb_read = fb_sys_read,
+	.fb_write = fb_sys_write,
+};
+
 
 
 static int write_command(struct spi_device * spidev,unsigned char cmd)
@@ -305,8 +316,6 @@ static int platform_get_info(struct spi_device * spidev, struct ssd1331_pri_data
 
 static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 {
-	pssd->spidev = spidev;
-
 	if (0 == of_get_info(spidev, pssd))
 		return 1;
 
@@ -385,23 +394,23 @@ static int myprobe(struct spi_device * spidev)
 {
 	struct ssd1331_pri_data * pssd = NULL;
 	int ret;
-
+	u32 vmem_size;
+	u8 * vmem;
 	/*private data*/
-	if (0 == (pssd = devm_kzalloc(&spidev->dev, sizeof(ssd1331_pri_data), GFP_KERNEL)))
-		goto err;
-	pssd->dbg_pri_flag = 0;
+	struct fb_info * pfb = framebuffer_alloc(sizeof(ssd1331_pri_data), &spidev->dev);
 
+	if (0 == pfb)
+		goto err;
+
+	pssd = pfb->par;
+	pssd->dbg_pri_flag = 0;
+	pssd->pfb = pfb;
+	pssd->spidev = spidev;
 
 	/*get infomation*/
 	if (0 > (ret = init_info(spidev, pssd)))
 		goto err;
 
-	/*get video memory*/
-	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->width * pssd->heigth * sizeof(pix_data), GFP_KERNEL)))
-	{
-		dev_err(&spidev->dev, "video memory ,no enough mem\n");
-		goto err;
-	}
 	/*get control gpio*/
 	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->reset_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
@@ -413,24 +422,69 @@ static int myprobe(struct spi_device * spidev)
 		dev_err(&spidev->dev, "cat not get dc io\n");
 		goto err;
 	}
+
+	/*get video memory*/
+	vmem_size = pssd->width * pssd->heigth * 2;
+	vmem = (void *)__get_free_pages(GFP_KERNEL | __GFP_ZERO,
+		get_order(vmem_size));
+
+	if (!vmem){
+		dev_err(&spidev->dev, "video memory ,no enough mem\n");
+		goto vmem_alloc_error;
+	}
+	pfb->fbops = &ssd1331fb_ops;
+
+	pfb->var = ssd1331fb_var;
+	pfb->var.xres = pssd->width;
+	pfb->var.xres_virtual = pssd->width;
+	pfb->var.yres = pssd->heigth;
+	pfb->var.yres_virtual = pssd->heigth;
+
+	pfb->var.red.length = 8;
+	pfb->var.red.offset = 0;
+	pfb->var.green.length = 8;
+	pfb->var.green.offset = 0;
+	pfb->var.blue.length = 8;
+	pfb->var.blue.offset = 0;
+
+	pfb->screen_base = (u8 __force __iomem *)vmem;
+	pfb->fix.smem_start = __pa(vmem);
+	pfb->fix.smem_len = vmem_size;
+
 	spi_set_drvdata(spidev, pssd);	
+
+	ret = register_framebuffer(pfb);
+	if (ret){
+		dev_err(&spidev->dev, "couldn't register the framebuffer\n");
+		goto panel_init_error;
+	}
 
 	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
-		goto err;
+		goto ssd_init;
 
 	/*turn on flag*/
 	pssd->send_flag = 1;
-
 	if (0 == (pssd->ptask = kthread_run(mem_send_thread, pssd, "ssd1331 thread")))
-		goto err;
+		goto thread_init;
 
 	return 0;
+
+thread_init:
+
+ssd_init:
+	unregister_framebuffer(pfb);
+panel_init_error:
+	kfree(pfb->screen_base);
+	pfb->screen_base = 0;
+vmem_alloc_error:
+
 err:
+	framebuffer_release(pfb);
 	return -1;
 }
 
-static int close_send(ssd1331_pri_data * pssd)
+static int close_send(struct ssd1331_pri_data * pssd)
 {
 	int trytime = 50;
 	pssd->send_flag = 0;
