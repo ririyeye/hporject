@@ -12,22 +12,22 @@
 #include <linux/of_gpio.h>
 #include <linux/kthread.h>
 
-#define  RGB_16(R,G,B) ((u16)(((B)&0xf8)>>3)|(((G)&0xfc)<<3)|(((R)&0xf8)<<8))
 
 typedef union pix_data {
 	u16 color_num;
 }pix_data;
 
 #define THREAD_CLOSE_FLAG -1
-
+#define SSD_1331_WIDTH 96
+#define SSD_1331_HEIGTH 64
 
 
 typedef struct ssd1331_pri_data
 {
 	int reset_io;
 	int dc_io;
-	int x_size;
-	int y_size;
+	int width;
+	int heigth;
 	int send_flag;
 //for debug
 	int dbg_pri_flag;
@@ -267,8 +267,8 @@ static int of_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pss
 
 	of_property_read_u32_array(of_node, "video-size", tmp, 2);
 
-	pssd->x_size = tmp[0];
-	pssd->y_size = tmp[1];
+	pssd->width = tmp[0] ? tmp[0] : SSD_1331_WIDTH;
+	pssd->heigth = tmp[1] ? tmp[1] : SSD_1331_HEIGTH;
 
 	pssd->reset_io = of_get_named_gpio(of_node, "reset-io", 0);
 	pssd->dc_io = of_get_named_gpio(of_node, "dc-io", 0);
@@ -279,7 +279,7 @@ static int of_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pss
 	dev_notice(&spidev->dev, "reset %d,dc %d\n", pssd->reset_io, pssd->dc_io);
 
 
-	if (!pssd->x_size || !pssd->y_size || !pssd->dc_io || !pssd->reset_io)
+	if (!pssd->dc_io || !pssd->reset_io)
 	{
 		dev_err(&spidev->dev, "of fail\n");
 		return -2;
@@ -294,8 +294,8 @@ static int platform_get_info(struct spi_device * spidev, struct ssd1331_pri_data
 	if (pdata == 0)
 		return -1;
 
-	pssd->x_size = pdata->x_szie;
-	pssd->y_size = pdata->y_size;
+	pssd->width = pdata->width;
+	pssd->heigth = pdata->heigth;
 
 	pssd->reset_io = pdata->reset_io;
 	pssd->dc_io = pdata->dc_io;
@@ -321,7 +321,7 @@ static void ssd_change_color(struct ssd1331_pri_data * pssd)
 
 	pssd->color_num += 100;
 
-	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
+	for (i = 0; i < pssd->width*pssd->heigth; i++)
 	{
 		pssd->pram[i].color_num = pssd->color_num;
 	}
@@ -332,17 +332,22 @@ static void ssd_change_color(struct ssd1331_pri_data * pssd)
 static void ssd_send_all(struct ssd1331_pri_data * pssd)
 {
 	struct spi_device * spidev = pssd->spidev;
-	const unsigned char cmd[6] = { 0x15,0,96 - 1,0x75,0, 64 - 1 };
+	
+	const unsigned char cmd[6] = {
+		0x15,0,pssd->width - 1,
+		0x75,0, pssd->heigth - 1
+	};
 
+	/*set pos to init*/
 	gpio_set_value(pssd->dc_io, 0);
-	dev_notice(&spidev->dev,"dc = 0\n");
+	dev_notice(&spidev->dev, "dc = 0\n");
 
 	spi_write(spidev, &cmd, 6);
 
 	gpio_set_value(pssd->dc_io, 1);
 	dev_notice(&spidev->dev, "dc = 1\n");
-
-	spi_write(spidev, pssd->pram, pssd->x_size * pssd->y_size * 2);
+	/*flush all data to led*/
+	spi_write(spidev, pssd->pram, pssd->width * pssd->heigth * 2);
 }
 
 
@@ -362,7 +367,7 @@ static int mem_send_thread(void * pdata)
 	}
 
 	/*clean all data*/
-	for (i = 0; i < pssd->x_size*pssd->y_size; i++)
+	for (i = 0; i < pssd->width*pssd->heigth; i++)
 	{
 		pssd->pram[i].color_num = 0;
 	}
@@ -392,7 +397,7 @@ static int myprobe(struct spi_device * spidev)
 		goto err;
 
 	/*get video memory*/
-	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->x_size * pssd->y_size * sizeof(pix_data), GFP_KERNEL)))
+	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->width * pssd->heigth * sizeof(pix_data), GFP_KERNEL)))
 	{
 		dev_err(&spidev->dev, "video memory ,no enough mem\n");
 		goto err;
@@ -451,17 +456,22 @@ int myremove(struct spi_device * spidev)
 }
 
 
-struct spi_device_id ids[] =
+struct spi_device_id ssd1331_id[] =
 {
 	{"ssd1331"},
 	{/*for null*/},
 };
+
+MODULE_DEVICE_TABLE(spi, ssd1331_id);
+
 #ifdef CONFIG_OF
 static const struct of_device_id of_ssd_dt_ids[] = {
 	{.compatible = "my,ssd1331"},
 	{},
 };
+MODULE_DEVICE_TABLE(of, of_ssd_dt_ids);
 #endif
+
 struct spi_driver myspi_drv =
 {
 	.driver = {
@@ -471,7 +481,7 @@ struct spi_driver myspi_drv =
 	},
 	.probe = myprobe,
 	.remove = myremove,
-	.id_table = ids,
+	.id_table = ssd1331_id,
 };
 
 
