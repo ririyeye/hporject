@@ -46,10 +46,12 @@ static int write_command(struct spi_device * spidev,unsigned char cmd)
 	int ret;
 
 	gpio_set_value(pssd->dc_io,0);
-	if(pssd->dbg_pri_flag) printk("dc = 0\n");
+	dev_notice(&spidev->dev, "dc = 0\n");
+	
 	ret = spi_write(spidev, &cmd, 1);
+
 	gpio_set_value(pssd->dc_io, 1);
-	if (pssd->dbg_pri_flag) printk("dc = 1\n");
+	dev_notice(&spidev->dev, "dc = 1\n");
 	return ret;
 }
 
@@ -222,10 +224,10 @@ static int ssd1331_init(struct spi_device * spidev)
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 
 	gpio_set_value(pssd->reset_io, 0);
-	if (pssd->dbg_pri_flag) printk("reset = 0\n");
+	dev_notice (&spidev->dev, "reset = 0\n");
 	msleep(100);
 	gpio_set_value(pssd->reset_io, 1);
-	if (pssd->dbg_pri_flag) printk("reset = 1\n");
+	dev_notice(&spidev->dev, "reset = 1\n");
 
 
 	Set_Display_On_Off(spidev, 0x00);		    // Display Off (0x00/0x01)
@@ -274,12 +276,12 @@ static int of_get_info(struct spi_device * spidev, struct ssd1331_pri_data * pss
 	gpio_direction_output(pssd->reset_io, 0);
 	gpio_direction_output(pssd->dc_io, 0);
 
-	printk("reset %d,dc %d\n", pssd->reset_io, pssd->dc_io);
+	dev_notice(&spidev->dev, "reset %d,dc %d\n", pssd->reset_io, pssd->dc_io);
 
 
 	if (!pssd->x_size || !pssd->y_size || !pssd->dc_io || !pssd->reset_io)
 	{
-		printk("of fail\n");
+		dev_err(&spidev->dev, "of fail\n");
 		return -2;
 	}
 	return 0;
@@ -326,15 +328,19 @@ static void ssd_change_color(struct ssd1331_pri_data * pssd)
 }
 
 
+
 static void ssd_send_all(struct ssd1331_pri_data * pssd)
 {
 	struct spi_device * spidev = pssd->spidev;
+	const unsigned char cmd[6] = { 0x15,0,96 - 1,0x75,0, 64 - 1 };
 
-	Set_Column_Address(spidev , 0x00, 0x5F);
-	Set_Row_Address(spidev ,0x00, 0x3F);
+	gpio_set_value(pssd->dc_io, 0);
+	dev_notice(&spidev->dev,"dc = 0\n");
+
+	spi_write(spidev, &cmd, 6);
 
 	gpio_set_value(pssd->dc_io, 1);
-	if(pssd->dbg_pri_flag) printk("dc = 1\n");
+	dev_notice(&spidev->dev, "dc = 1\n");
 
 	spi_write(spidev, pssd->pram, pssd->x_size * pssd->y_size * 2);
 }
@@ -343,8 +349,10 @@ static void ssd_send_all(struct ssd1331_pri_data * pssd)
 static int mem_send_thread(void * pdata)
 {
 	struct ssd1331_pri_data * pssd = pdata;
+	struct spi_device * spidev = pssd->spidev;
+
 	int i;
-	printk("start send thread \n");
+	dev_notice(&spidev->dev, "start send thread \n");
 
 	while (pssd->send_flag > 0)
 	{
@@ -363,7 +371,7 @@ static int mem_send_thread(void * pdata)
 	/*set close flag*/
 	pssd->send_flag = THREAD_CLOSE_FLAG;
 	
-	printk("end send thread\n");
+	dev_notice(&spidev->dev, "end send thread\n");
 	return 0;
 }
 
@@ -384,22 +392,20 @@ static int myprobe(struct spi_device * spidev)
 		goto err;
 
 	/*get video memory*/
-	printk("size of pix_data is %d\n", sizeof(pix_data));
-
 	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->x_size * pssd->y_size * sizeof(pix_data), GFP_KERNEL)))
 	{
-		printk("video memory ,no enough mem\n");
+		dev_err(&spidev->dev, "video memory ,no enough mem\n");
 		goto err;
 	}
 	/*get control gpio*/
 	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->reset_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
-		printk("cat not get reset io\n");
+		dev_err(&spidev->dev, "cat not get reset io\n");
 		goto err;
 	}
 	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->dc_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
-		printk("cat not get dc io\n");
+		dev_err(&spidev->dev, "cat not get dc io\n");
 		goto err;
 	}
 	spi_set_drvdata(spidev, pssd);	
@@ -439,7 +445,7 @@ int myremove(struct spi_device * spidev)
 {	
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 	//try to close send thread
-	if (0 != close_send(pssd)) printk("send close fail\n");
+	if (0 != close_send(pssd)) dev_err(&spidev->dev, "send close fail\n");
 
 	return 0;
 }
