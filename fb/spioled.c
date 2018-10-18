@@ -21,8 +21,11 @@ typedef union pix_data {
 #define SSD_1331_WIDTH 96
 #define SSD_1331_HEIGTH 64
 
+#define COLOR_DEBUG 0
 
-typedef struct ssd1331_pri_data
+
+
+struct ssd1331_pri_data
 {
 	int reset_io;
 	int dc_io;
@@ -33,11 +36,32 @@ typedef struct ssd1331_pri_data
 	int dbg_pri_flag;
 	u16 color_num;
 
-
+	struct fb_info * pfb;
 	struct spi_device * spidev;
 	struct task_struct * ptask;
 	pix_data * pram;
 }ssd1331_pri_data;
+
+static struct fb_ops ssd1331fb_ops = {
+.owner = THIS_MODULE,
+.fb_read = fb_sys_read,
+.fb_write = fb_sys_write,
+};
+
+static const struct fb_fix_screeninfo ssd1331fb_fix = {
+	.id = "test ssd1331",
+	.type = FB_TYPE_PLANES,
+	.visual = FB_VISUAL_TRUECOLOR,
+	.xpanstep = 0,
+	.ypanstep = 0,
+	.ywrapstep = 0,
+	.accel = FB_ACCEL_NONE,
+};
+
+static const struct fb_var_screeninfo ssd1331fb_var = {
+.bits_per_pixel = 16,
+};
+
 
 
 static int write_command(struct spi_device * spidev,unsigned char cmd)
@@ -315,6 +339,7 @@ static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 	return -1;
 }
 
+#if COLOR_DEBUG > 0
 static void ssd_change_color(struct ssd1331_pri_data * pssd)
 {
 	int i;
@@ -326,7 +351,7 @@ static void ssd_change_color(struct ssd1331_pri_data * pssd)
 		pssd->pram[i].color_num = pssd->color_num;
 	}
 }
-
+#endif
 
 
 static void ssd_send_all(struct ssd1331_pri_data * pssd)
@@ -362,7 +387,9 @@ static int mem_send_thread(void * pdata)
 	while (pssd->send_flag > 0)
 	{
 		msleep(100);
+#if COLOR_DEBUG > 0
 		ssd_change_color(pssd);
+#endif
 		ssd_send_all(pssd);
 	}
 
@@ -385,53 +412,108 @@ static int myprobe(struct spi_device * spidev)
 {
 	struct ssd1331_pri_data * pssd = NULL;
 	int ret;
-
+	u32 vmem_size = 0;
+	u8 * vmem = NULL;
 	/*private data*/
-	if (0 == (pssd = devm_kzalloc(&spidev->dev, sizeof(ssd1331_pri_data), GFP_KERNEL)))
-		goto err;
-	pssd->dbg_pri_flag = 0;
+	struct fb_info * pfb = framebuffer_alloc(sizeof(ssd1331_pri_data), &spidev->dev);
 
+	if (0 == pfb)
+		goto fb_all_err;
+
+	pssd = pfb->par;
+	pssd->pfb = pfb;
+
+	pssd->dbg_pri_flag = 0;
 
 	/*get infomation*/
 	if (0 > (ret = init_info(spidev, pssd)))
-		goto err;
-
-	/*get video memory*/
-	if (0 == (pssd->pram = devm_kzalloc(&spidev->dev, pssd->width * pssd->heigth * sizeof(pix_data), GFP_KERNEL)))
-	{
-		dev_err(&spidev->dev, "video memory ,no enough mem\n");
-		goto err;
-	}
+		goto get_dev_info_err;
+	
 	/*get control gpio*/
 	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->reset_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
 		dev_err(&spidev->dev, "cat not get reset io\n");
-		goto err;
+		goto get_gpio_err;
 	}
 	if (0 > (ret = devm_gpio_request_one(&spidev->dev, pssd->dc_io, GPIOF_OUT_INIT_HIGH, spidev->modalias)))
 	{
 		dev_err(&spidev->dev, "cat not get dc io\n");
-		goto err;
+		goto get_gpio_err;
 	}
+
+	/*get video memory*/
+	vmem_size = pssd->width * pssd->heigth * 2;
+	vmem = devm_kzalloc(&spidev->dev, vmem_size, GFP_KERNEL);
+
+	if (0 == (pssd->pram = (void *)vmem)){
+		dev_err(&spidev->dev, "video memory ,no enough mem\n");
+		goto get_vmem_err;
+	}
+
+	pfb->fbops = &ssd1331fb_ops;
+	pfb->fix = ssd1331fb_fix;
+	pfb->fix.line_length = pssd->width * 16 / 8;
+	pfb->fix.accel = FB_ACCEL_NONE;
+	pfb->fix.smem_start = __pa(vmem);
+	pfb->fix.smem_len = vmem_size;
+
+	pfb->var = ssd1331fb_var;
+	pfb->var.xres = pssd->width;
+	pfb->var.xres_virtual = pssd->width;
+	pfb->var.yres = pssd->heigth;
+	pfb->var.yres_virtual = pssd->heigth;
+
+	pfb->var.red.offset =		11;
+	pfb->var.red.length =		5;
+	pfb->var.green.offset =		5;
+	pfb->var.green.length =		6;
+	pfb->var.blue.offset =		0;
+	pfb->var.blue.length =		5;
+	pfb->var.transp.offset =	0;
+	pfb->var.transp.length =	0;
+
+	pfb->flags = FBINFO_FLAG_DEFAULT | FBINFO_VIRTFB;
+
+	pfb->screen_base = (u8 __force __iomem *)vmem;
+
+	ret = register_framebuffer(pfb);
+	if (ret){
+		dev_err(&spidev->dev, "couldn't register the framebuffer\n");
+		goto register_err;
+	}
+
 	spi_set_drvdata(spidev, pssd);	
 
 	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
-		goto err;
+		goto init_ssd_err;
 
 	/*turn on flag*/
 	pssd->send_flag = 1;
 
 	if (0 == (pssd->ptask = kthread_run(mem_send_thread, pssd, "ssd1331 thread")))
-		goto err;
+		goto kernel_err;
 
 	return 0;
-err:
+kernel_err:
+
+init_ssd_err:
+	unregister_framebuffer(pfb);
+register_err:
+
+get_vmem_err:
+
+get_gpio_err:
+
+get_dev_info_err:
+	framebuffer_release(pfb);
+fb_all_err:
 	return -1;
 }
 
-static int close_send(ssd1331_pri_data * pssd)
+static int close_send(struct ssd1331_pri_data * pssd)
 {
+	struct fb_info * pfb = pssd->pfb;
 	int trytime = 50;
 	pssd->send_flag = 0;
 	while (trytime-- > 0)
@@ -442,6 +524,7 @@ static int close_send(ssd1331_pri_data * pssd)
 			return 0;
 		}
 	}
+	framebuffer_release(pfb);
 	return -1;
 }
 
