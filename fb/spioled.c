@@ -21,8 +21,6 @@ typedef union pix_data {
 #define SSD_1331_WIDTH 96
 #define SSD_1331_HEIGTH 64
 
-#define COLOR_DEBUG 0
-
 
 
 struct ssd1331_pri_data
@@ -70,12 +68,12 @@ static int write_command(struct spi_device * spidev,unsigned char cmd)
 	int ret;
 
 	gpio_set_value(pssd->dc_io,0);
-	dev_notice(&spidev->dev, "dc = 0\n");
+	dev_info(&spidev->dev, "dc = 0\n");
 	
 	ret = spi_write(spidev, &cmd, 1);
 
 	gpio_set_value(pssd->dc_io, 1);
-	dev_notice(&spidev->dev, "dc = 1\n");
+	dev_info(&spidev->dev, "dc = 1\n");
 	return ret;
 }
 
@@ -339,20 +337,6 @@ static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 	return -1;
 }
 
-#if COLOR_DEBUG > 0
-static void ssd_change_color(struct ssd1331_pri_data * pssd)
-{
-	int i;
-
-	pssd->color_num += 100;
-
-	for (i = 0; i < pssd->width*pssd->heigth; i++)
-	{
-		pssd->pram[i].color_num = pssd->color_num;
-	}
-}
-#endif
-
 
 static void ssd_send_all(struct ssd1331_pri_data * pssd)
 {
@@ -365,12 +349,12 @@ static void ssd_send_all(struct ssd1331_pri_data * pssd)
 
 	/*set pos to init*/
 	gpio_set_value(pssd->dc_io, 0);
-	dev_notice(&spidev->dev, "dc = 0\n");
+	dev_info(&spidev->dev, "dc = 0\n");
 
 	spi_write(spidev, &cmd, 6);
 
 	gpio_set_value(pssd->dc_io, 1);
-	dev_notice(&spidev->dev, "dc = 1\n");
+	dev_info(&spidev->dev, "dc = 1\n");
 	/*flush all data to led*/
 	spi_write(spidev, pssd->pram, pssd->width * pssd->heigth * 2);
 }
@@ -386,10 +370,7 @@ static int mem_send_thread(void * pdata)
 
 	while (pssd->send_flag > 0)
 	{
-		msleep(100);
-#if COLOR_DEBUG > 0
-		ssd_change_color(pssd);
-#endif
+		msleep(1);
 		ssd_send_all(pssd);
 	}
 
@@ -513,7 +494,7 @@ fb_all_err:
 
 static int close_send(struct ssd1331_pri_data * pssd)
 {
-	struct fb_info * pfb = pssd->pfb;
+
 	int trytime = 50;
 	pssd->send_flag = 0;
 	while (trytime-- > 0)
@@ -524,16 +505,22 @@ static int close_send(struct ssd1331_pri_data * pssd)
 			return 0;
 		}
 	}
-	framebuffer_release(pfb);
+
 	return -1;
 }
 
 
 int myremove(struct spi_device * spidev)
-{	
+{
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
+	struct fb_info * pfb = pssd->pfb;
+	int ret;
 	//try to close send thread
 	if (0 != close_send(pssd)) dev_err(&spidev->dev, "send close fail\n");
+
+	if (0 != (ret = unregister_framebuffer(pfb)))  dev_err(&spidev->dev, "unregister_framebuffer error\n");
+
+	framebuffer_release(pfb);
 
 	return 0;
 }
