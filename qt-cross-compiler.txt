@@ -1,0 +1,50 @@
+qt everywhere compile
+qt-5.11.2
+compiler arm-linux-gnueabihf-gcc
+for cortex-a7
+
+1.compiler tslib
+ 1)download tslib-1.18
+
+ 2)./autogen.sh
+
+ 3) configure for arm linux
+./configure --host=arm-linux-gnueabihf CC=arm-linux-gnueabihf-gcc  \
+--prefix=/share/code/tsinstall
+
+ 4) make && make install	
+
+
+2.compiler qt-everywhere
+
+ 1)modify for arm-linux-gnueabihf-gcc
+copy qt-everywhere-src-5.11.2/qtbase/mkspecs/linux-arm-gnueabi-g++/  ==> linux-arm-gnueabihf-g++
+
+gedit qt-everywhere-src-5.11.2/qtbase/mkspecs/linux-arm-gnueabihf-g++/qmake.conf
+
+add for cortex-a7 && modify for arm-linux-gnueabihf
+
+QT_QPA_DEFAULT_PLATFORM = linux #eglfs
+QMAKE_CFLAGS_RELEASE += -O2 -mcpu=cortex-a7
+QMAKE_CXXFLAGS_RELEASE += -O2 -mcpu=cortex-a7
+
+ 2) configure for qt
+
+./configure \
+-prefix /share/code/qtinstall \
+-release \
+-opensource \
+-no-accessibility \
+-make libs \
+-xplatform linux-arm-gnueabihf-g++ \
+-optimized-qmake \
+-pch \
+-tslib \
+-no-opengl \
+-no-sse2 \
+-no-openssl \
+-no-glib \
+-no-pkg-config \
+-I /share/code/tsinstall/include -L /share/code/tsinstall/lib \
+-recheck-all
+ 3)make -j8 && make install
