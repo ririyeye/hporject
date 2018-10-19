@@ -327,8 +327,6 @@ static int platform_get_info(struct spi_device * spidev, struct ssd1331_pri_data
 
 static int init_info(struct spi_device * spidev, struct ssd1331_pri_data * pssd)
 {
-	pssd->spidev = spidev;
-
 	if (0 == of_get_info(spidev, pssd))
 		return 1;
 
@@ -465,13 +463,18 @@ static int myprobe(struct spi_device * spidev)
 
 	spi_set_drvdata(spidev, pssd);	
 
+	ret = register_framebuffer(pfb);
+	if (ret){
+		dev_err(&spidev->dev, "couldn't register the framebuffer\n");
+		goto panel_init_error;
+	}
+
 	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
 		goto init_ssd_err;
 
 	/*turn on flag*/
 	pssd->send_flag = 1;
-
 	if (0 == (pssd->ptask = kthread_run(mem_send_thread, pssd, "ssd1331 thread")))
 		goto kernel_err;
 
