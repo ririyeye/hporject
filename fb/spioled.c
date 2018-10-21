@@ -68,12 +68,10 @@ static int write_command(struct spi_device * spidev,unsigned char cmd)
 	int ret;
 
 	gpio_set_value(pssd->dc_io,0);
-	dev_info(&spidev->dev, "dc = 0\n");
 	
 	ret = spi_write(spidev, &cmd, 1);
 
 	gpio_set_value(pssd->dc_io, 1);
-	dev_info(&spidev->dev, "dc = 1\n");
 	return ret;
 }
 
@@ -345,12 +343,10 @@ static void ssd_send_all(struct ssd1331_pri_data * pssd)
 
 	/*set pos to init*/
 	gpio_set_value(pssd->dc_io, 0);
-	dev_info(&spidev->dev, "dc = 0\n");
 
 	spi_write(spidev, &cmd, 6);
 
 	gpio_set_value(pssd->dc_io, 1);
-	dev_info(&spidev->dev, "dc = 1\n");
 	/*flush all data to led*/
 	spi_write(spidev, pssd->pram, pssd->width * pssd->heigth * 2);
 }
@@ -402,6 +398,7 @@ static int myprobe(struct spi_device * spidev)
 
 	pssd->dbg_pri_flag = 0;
 
+	pssd->spidev = spidev;
 	/*get infomation*/
 	if (0 > (ret = init_info(spidev, pssd)))
 		goto get_dev_info_err;
@@ -460,12 +457,6 @@ static int myprobe(struct spi_device * spidev)
 	}
 
 	spi_set_drvdata(spidev, pssd);	
-
-	ret = register_framebuffer(pfb);
-	if (ret){
-		dev_err(&spidev->dev, "couldn't register the framebuffer\n");
-		goto panel_init_error;
-	}
 
 	/*oled init sequence*/
 	if (0 != (ret = ssd1331_init(spidev)))
