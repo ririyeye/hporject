@@ -26,6 +26,7 @@ clean:
 	make -C $(KERNEL_DIR)  M=$(PWD) clean
 else
 obj-m += spioled.o
+#obj-m += dht11.o
 #obj-m += info.o
 endif
 

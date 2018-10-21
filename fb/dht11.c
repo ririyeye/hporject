@@ -33,9 +33,18 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-#include <linux/timekeeping.h>
-
+#include <linux/ktime.h>
 #include <linux/iio/iio.h>
+
+static inline u64 ktime_get_boot_ns(void)
+{
+	return ktime_to_ns(ktime_get_boottime());
+}
+
+static inline void reinit_completion(struct completion *x)
+{
+	x->done = 0;
+}
 
 #define DRIVER_NAME	"dht11"
 
@@ -206,6 +215,7 @@ static int dht11_read_raw(struct iio_dev *iio_dev,
 
 	mutex_lock(&dht11->lock);
 	if (dht11->timestamp + DHT11_DATA_VALID_TIME < ktime_get_boot_ns()) {
+#if 0
 		timeres = ktime_get_resolution_ns();
 		dev_dbg(dht11->dev, "current timeresolution: %dns\n", timeres);
 		if (timeres > DHT11_MIN_TIMERES) {
@@ -222,7 +232,7 @@ static int dht11_read_raw(struct iio_dev *iio_dev,
 			dev_warn(dht11->dev,
 				 "timeresolution: %dns - decoding ambiguous\n",
 				 timeres);
-
+#endif
 		reinit_completion(&dht11->completion);
 
 		dht11->num_edges = 0;
@@ -308,7 +318,7 @@ static int dht11_probe(struct platform_device *pdev)
 	struct iio_dev *iio;
 	int ret;
 
-	iio = devm_iio_device_alloc(dev, sizeof(*dht11));
+	iio = iio_device_alloc(sizeof(*dht11));
 	if (!iio) {
 		dev_err(dev, "Failed to allocate IIO device\n");
 		return -ENOMEM;
@@ -317,9 +327,18 @@ static int dht11_probe(struct platform_device *pdev)
 	dht11 = iio_priv(iio);
 	dht11->dev = dev;
 
-	ret = of_get_gpio(node, 0);
+	if (node){
+		ret = of_get_gpio(node, 0);
+	}
+	else{
+		int * ppp = (int *)pdev->dev.platform_data;
+		ret = ppp[0];
+		printk("ret = %d\n", ret);
+	}
 	if (ret < 0)
 		return ret;
+
+
 	dht11->gpio = ret;
 	ret = devm_gpio_request_one(dev, dht11->gpio, GPIOF_IN, pdev->name);
 	if (ret)
@@ -345,7 +364,18 @@ static int dht11_probe(struct platform_device *pdev)
 	iio->channels = dht11_chan_spec;
 	iio->num_channels = ARRAY_SIZE(dht11_chan_spec);
 
-	return devm_iio_device_register(dev, iio);
+	return iio_device_register(iio);
+}
+
+
+static int dht11_remove(struct platform_device *pdev)
+{
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+
+	iio_device_unregister(iio);
+	iio_device_free(iio);
+
+	return 0;
 }
 
 static struct platform_driver dht11_driver = {
@@ -354,6 +384,7 @@ static struct platform_driver dht11_driver = {
 		.of_match_table = dht11_dt_ids,
 	},
 	.probe  = dht11_probe,
+	.remove = dht11_remove,
 };
 
 module_platform_driver(dht11_driver);
