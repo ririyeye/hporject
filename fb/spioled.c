@@ -246,10 +246,8 @@ static int ssd1331_init(struct spi_device * spidev)
 	struct ssd1331_pri_data * pssd = spi_get_drvdata(spidev);
 
 	gpio_set_value(pssd->reset_io, 0);
-	dev_notice (&spidev->dev, "reset = 0\n");
 	msleep(100);
 	gpio_set_value(pssd->reset_io, 1);
-	dev_notice(&spidev->dev, "reset = 1\n");
 
 
 	Set_Display_On_Off(spidev, 0x00);		    // Display Off (0x00/0x01)
