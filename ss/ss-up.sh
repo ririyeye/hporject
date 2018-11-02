@@ -1,5 +1,6 @@
 #!/bin/sh
 SOCKS_SERVER=149.28.14.216 # SOCKS 服务器的 IP 地址
+PORT=1080
 # Setup the ipset
 ipset -N chnroute hash:net maxelem 65536
 
@@ -30,9 +31,9 @@ iptables -t nat -A SHADOWSOCKS -p icmp -m set --match-set chnroute dst -j RETURN
 
 # Redirect to Shadowsocks
 # 把1081改成你的shadowsocks本地端口
-iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-port 1080
+iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-port $PORT
 # 如果你想对 icmp 协议也实现智能分流，可以加上下面这一条
-iptables -t nat -A SHADOWSOCKS -p icmp -j REDIRECT --to-port 1080
+iptables -t nat -A SHADOWSOCKS -p icmp -j REDIRECT --to-port $PORT
 
 # 将SHADOWSOCKS链中所有的规则追加到OUTPUT链中
 iptables -t nat -A OUTPUT -p tcp -j SHADOWSOCKS
