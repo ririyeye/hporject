@@ -47,7 +47,18 @@ iptables -t nat -A POSTROUTING -s 192.168/16 -j MASQUERADE
 ip rule add fwmark 0x01/0x01 table 100
 ip route add local 0.0.0.0/0 dev lo table 100
 iptables -t mangle -N SSUDP
-iptables -t mangle -A SSUDP -p udp -m set --match-set chnroute dst -j RETURN
-iptables -t mangle -A SSUDP -p udp -j TPROXY --on-port $PORT --tproxy-mark 0x01/0x01
-iptables -t mangle -A PREROUTING -j SSUDP
+iptables -t mangle -N SSUDP_MARK
 
+
+#iptables -t mangle -A SSUDP -p udp --dport 53 -j RETURN
+#iptables -t mangle -A SSUDP -p udp --dport 5353 -j RETURN
+iptables -t mangle -A SSUDP -p udp -m set --match-set chnroute dst -j RETURN
+
+
+iptables -t mangle -A SSUDP -p udp -j TPROXY --on-port $PORT --tproxy-mark 0x01/0x01
+
+iptables -t mangle -A SSUDP_MARK -p udp -m set --match-set chnroute dst -j RETURN
+iptables -t mangle -A SSUDP_MARK -p udp -j MARK --set-mark 1
+
+iptables -t mangle -A PREROUTING -j SSUDP
+iptables -t mangle -A OUTPUT -p udp -j SSUDP_MARK
