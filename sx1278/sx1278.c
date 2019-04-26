@@ -5,13 +5,13 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/spi/spi.h>
-#include <linux/fb.h>
 #include <linux/gpio.h>
+#include <linux/irq.h>
 #include "sx1278.h"
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/kthread.h>
-
+#include <linux/of_irq.h>
 
 
 typedef struct sx1278_private_data {
@@ -22,7 +22,8 @@ typedef struct sx1278_private_data {
 	//0 running 
 	//1 try stop
 	//-1 thread stopped
-
+	int reset_io;
+	int irq_no;
 
 	uint8_t frequency;
 	uint8_t power;
@@ -74,17 +75,16 @@ static int SX1278_SPIBurstWrite(SX1278_t * psx, uint8_t addr, uint8_t* txBuf, ui
 
 
 
-//void SX1278_hw_Reset(SX1278_hw_t * hw)
-//{
-//	SX1278_hw_SetNSS(hw, 1);
-//	HAL_GPIO_WritePin(hw->reset.port, hw->reset.pin, GPIO_PIN_RESET);
-//
-//	SX1278_hw_DelayMs(1);
-//
-//	HAL_GPIO_WritePin(hw->reset.port, hw->reset.pin, GPIO_PIN_SET);
-//
-//	SX1278_hw_DelayMs(100);
-//}
+void SX1278_hw_Reset(SX1278_t * psx)
+{
+	gpio_direction_output(psx->reset_io, 0);
+
+	msleep(1);
+
+	gpio_direction_output(psx->reset_io, 1);
+
+	msleep(100);
+}
 
 
 void SX1278_hw_DelayMs(uint32_t msec)
@@ -351,15 +351,17 @@ uint8_t SX1278_RSSI(SX1278_t * psx)
 
 static int sx1278_thread(void * pdata)
 {
+	static const char * buff = "12345";
+
 	SX1278_t * pssd = pdata;
 
 	dev_notice(&pssd->spidev->dev, "sx1278 start thread \n");
 
 	while (pssd->running_flag == 0) {
 		
-		//if (0 != spi_write(pssd->spidev, buff, 5)) {
-		//	dev_notice(&pssd->spidev->dev, "write data error\n");
-		//}
+		if (0 != spi_write(pssd->spidev, buff, 5)) {
+			dev_notice(&pssd->spidev->dev, "write data error\n");
+		}
 		msleep(200);
 	}
 
@@ -384,6 +386,60 @@ static void wait_thread_finished(SX1278_t * pspd)
 	}
 }
 
+static int of_get_info(struct spi_device * spidev, SX1278_t * psx)
+{
+	struct device_node * of_node = spidev->dev.of_node;
+
+	if (of_node == 0)
+		return -1;
+	
+	psx->reset_io = of_get_named_gpio(of_node, "reset-gpios", 0);
+	if (psx->reset_io < 0) {
+		dev_err(&spidev->dev, "of get reset failed = %d\n", psx->reset_io);
+		psx->reset_io = 0;
+		return -1;
+	}
+
+	if (spidev->irq == 0) {
+		dev_err(&spidev->dev, "no irq in sx1278\n");
+		return -2;
+	}
+	psx->irq_no = spidev->irq;
+	dev_notice(&spidev->dev, "irq No. = %d\n", psx->irq_no);
+
+	//if (!pssd->dc_io || !pssd->reset_io) {
+	//	dev_err(&spidev->dev, "of fail\n");
+	//	return -2;
+	//}
+	return 0;
+}
+
+irqreturn_t sx1278irq(int irqno, void * ppp)
+{
+	SX1278_t * psx = ppp;
+	printk("irq handler , irq no = %d\n",psx->irq_no);
+	return IRQ_HANDLED;
+}
+
+
+static int init_gpio(struct spi_device * spidev, SX1278_t * psx)
+{
+	int ret;
+	if (0 > (ret = devm_gpio_request_one(&spidev->dev, psx->reset_io, GPIOF_OUT_INIT_HIGH, spidev->modalias))) {
+		dev_err(&spidev->dev, "cat not get reset io,error = %d\n", ret);
+		return -1;
+	}
+
+	ret = devm_request_irq(&spidev->dev, psx->irq_no, sx1278irq, IRQ_TYPE_EDGE_FALLING, "sx1278 irq", psx);
+	if (ret != 0) {
+		dev_err(&spidev->dev, "devm_request_irq error = %d\n", ret);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 static int sx12_probe(struct spi_device * spidev)
 {
 	SX1278_t * psd = devm_kzalloc(&spidev->dev, sizeof(SX1278_t), GFP_KERNEL);
@@ -393,6 +449,14 @@ static int sx12_probe(struct spi_device * spidev)
 	if (!psd) {
 		dev_err(&spidev->dev, "malloc error\n");
 		goto Malloc_err;
+	}
+
+	if (0 != of_get_info(spidev, psd)) {
+		goto dts_error;
+	}
+
+	if (0 != init_gpio(spidev, psd)) {
+		goto ioinit_error;
 	}
 
 	psd->running_flag = 0;
@@ -407,6 +471,10 @@ static int sx12_probe(struct spi_device * spidev)
 
 	wait_thread_finished(psd);
 thread_err:	
+
+ioinit_error:
+
+dts_error:
 
 Malloc_err:
 	
