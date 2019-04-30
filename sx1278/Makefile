@@ -12,6 +12,7 @@ clean:
 	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -C $(KERNEL_DIR)  M=$(PWD) clean
 else
 obj-m += sx1278.o
+sx1278-objs = sx1278-frame.o sx1278-spi.o
 endif
 
 
